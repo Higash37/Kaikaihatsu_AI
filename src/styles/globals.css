@@ -1,0 +1,29 @@
+/* TailwindのスタイルをCSSファイルに取り込む */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Android の青いハイライトを防ぐ */
+* {
+  outline: none; /* フォーカス時の青枠を削除 */
+  -webkit-tap-highlight-color: transparent; /* Android のタップハイライトを消す */
+}
+
+/* クリック可能な要素の選択を防ぐ (Safari 互換) */
+button,
+svg,
+.no-select {
+  -webkit-user-select: none;
+  user-select: none; /* Safari 互換 */
+}
+
+@font-face {
+  font-family: "Zen Maru Gothic";
+  src: url("/fonts/ZenMaruGothic.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+body {
+  font-family: "Zen Maru Gothic", sans-serif;
+}
