@@ -1,76 +1,58 @@
-import { Box } from '@mui/material'
-import Image from 'next/legacy/image'
-import Link from 'next/link'
-import { useRouter } from 'next/router'
+import { Box, Typography } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
+import Link from "next/link";
+import { useRouter } from "next/router";
 
 const Header = () => {
-  const router = useRouter()
-  const isHome = router.pathname === '/'
+  const router = useRouter();
+  const isHome = router.pathname === "/";
+  const theme = useTheme();
 
   return (
     <Box
       component="nav"
       sx={{
-        position: 'fixed',
+        position: "fixed",
         top: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: { xs: 80, sm: 130, md: 90, lg: 67, xl: 120 },
-        width: '100vw',
-        padding: {
-          xs: '0 12px',
-          sm: '0 16px',
-          md: '0 24px',
-          lg: '0 32px',
-          xl: '0 40px',
-        },
-        backgroundColor: '#fff',
-        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        height: { xs: 60, sm: 70 }, // ヘッダーの高さを調整
+        width: "100vw",
+        padding: { xs: "0 16px", md: "0 24px" },
+        backgroundColor: theme.palette.background.paper, // テーマの背景色を適用
+        boxShadow: "none", // 影を削除
+        borderBottom: `1px solid ${theme.palette.divider}`, // 下線を追加
         zIndex: 10,
       }}
     >
       {/* ホームの場合はリンクなし */}
       {isHome ? (
-        <Box
-          sx={{
-            width: { xs: 150, sm: 200, md: 240, lg: 260, xl: 280 },
-            height: { xs: 80, sm: 110, md: 90, lg: 67, xl: 120 },
-            position: 'relative',
-          }}
+        <Typography
+          variant="h5"
+          component="h1"
+          sx={{ color: theme.palette.text.primary, fontWeight: "bold" }}
         >
-          <Image
-            src="images/LoveNavi.png"
-            alt="header logo"
-            layout="fill"
-            objectFit="contain"
-            priority
-          />
-        </Box>
+          QuestionnaireApp
+        </Typography>
       ) : (
-        // ホーム以外では画像をリンク化
-        <Link href="/" passHref>
-          <Box
+        // ホーム以外ではリンク化
+        <Link href="/" passHref style={{ textDecoration: "none" }}>
+          <Typography
+            variant="h5"
+            component="h1"
             sx={{
-              display: 'inline-block', // 余白をクリックできないようにする
-              width: { xs: 150, sm: 200, md: 240, lg: 260, xl: 280 },
-              height: { xs: 80, sm: 110, md: 90, lg: 67, xl: 120 },
-              position: 'relative',
-              cursor: 'pointer',
+              color: theme.palette.primary.main,
+              fontWeight: "bold",
+              cursor: "pointer",
             }}
           >
-            <Image
-              src="images/LoveNavi.png"
-              alt="header logo"
-              layout="fill"
-              objectFit="contain"
-              priority
-            />
-          </Box>
+            QuestionnaireApp
+          </Typography>
         </Link>
       )}
     </Box>
-  )
-}
+  );
+};
 
-export default Header
+export default Header;

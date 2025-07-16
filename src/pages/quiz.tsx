@@ -1,4 +1,5 @@
 import { Box, Button, Typography, LinearProgress } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import { useRouter } from "next/router";
 import { useState, useEffect, useMemo } from "react";
 import React from "react";
@@ -32,20 +33,25 @@ type QuizData = {
 
 export default function Quiz() {
   const router = useRouter();
+  const theme = useTheme();
 
   const [quizData, setQuizData] = useState<QuizData | null>(null);
-  const [answers, setAnswers] = useState<{ [id: number]: number | undefined }>({});
+  const [answers, setAnswers] = useState<{ [id: number]: number | undefined }>(
+    {}
+  );
   const [page, setPage] = useState(0);
   const [isScrolling, setIsScrolling] = useState(false);
 
   useEffect(() => {
-    const storedData = sessionStorage.getItem("quizData");
-    if (storedData) {
-      const parsedData: QuizData = JSON.parse(storedData);
-      setQuizData(parsedData);
-    } else {
-      // クイズデータがない場合はトップページに戻す
-      router.replace("/");
+    if (typeof window !== "undefined") {
+      const storedData = window.sessionStorage.getItem("quizData");
+      if (storedData) {
+        const parsedData: QuizData = JSON.parse(storedData);
+        setQuizData(parsedData);
+      } else {
+        // クイズデータがない場合はトップページに戻す
+        router.replace("/");
+      }
     }
   }, [router]);
 
@@ -75,7 +81,9 @@ export default function Quiz() {
     };
 
     // 診断結果をセッションストレージに保存
-    sessionStorage.setItem("quizResult", JSON.stringify(resultData));
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem("quizResult", JSON.stringify(resultData));
+    }
     router.push("/result");
   };
 
@@ -135,34 +143,73 @@ export default function Quiz() {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        bgcolor: "#fff",
+        backgroundColor: theme.palette.background.default,
+        minHeight: "100vh",
+        width: "100%",
+        userSelect: "none",
+        WebkitUserSelect: "none",
+        MozUserSelect: "none",
+        msUserSelect: "none",
       }}
     >
       <Header />
       <Box
         sx={{
           position: "fixed",
-          top: { xs: 80, sm: 130, md: 130, lg: 60, xl: 60 },
+          top: theme.spacing(8),
           left: 0,
           right: 0,
           zIndex: 9,
-          backgroundColor: "rgba(255, 255, 255, 0.9)",
-          opacity: isScrolling ? 1 : 0.3,
+          backgroundColor: theme.palette.background.paper,
+          opacity: isScrolling ? 1 : 0.9,
           transition: "opacity 0.3s ease-in-out",
           p: 2,
+          boxShadow: theme.shadows[1],
+          userSelect: "none",
+          WebkitUserSelect: "none",
+          MozUserSelect: "none",
+          msUserSelect: "none",
         }}
       >
-        <Box sx={{ width: "100%", maxWidth: { xs: "90%", sm: "800px" }, mx: "auto" }}>
-          <Typography variant="h5" component="h1" textAlign="center" sx={{ mb: 1, fontWeight: 'bold' }}>
+        <Box
+          sx={{
+            width: "100%",
+            maxWidth: { xs: "90%", sm: "800px" },
+            mx: "auto",
+          }}
+        >
+          <Typography
+            variant="h5"
+            component="h1"
+            textAlign="center"
+            sx={{
+              mb: 1,
+              fontWeight: "bold",
+              color: theme.palette.text.primary,
+            }}
+          >
             {quizData.title}
           </Typography>
           <LinearProgress
             variant="determinate"
             value={progressPercentage}
-            sx={{ height: { xs: 8, sm: 10 }, borderRadius: 5, backgroundColor: "#e0e0e0" }}
+            sx={{
+              height: { xs: 8, sm: 10 },
+              borderRadius: 5,
+              backgroundColor: theme.palette.divider,
+              "& .MuiLinearProgress-bar": {
+                backgroundColor: theme.palette.primary.main,
+              },
+            }}
           />
           <Typography
-            sx={{ textAlign: "center", mt: 1, fontWeight: "bold", fontSize: { xs: 12, sm: 14 }}}
+            sx={{
+              textAlign: "center",
+              mt: 1,
+              fontWeight: "bold",
+              fontSize: { xs: 12, sm: 14 },
+              color: theme.palette.text.secondary,
+            }}
           >
             回答進捗: {Math.round(progressPercentage)}%
           </Typography>
@@ -173,18 +220,33 @@ export default function Quiz() {
         <Box
           key={question.id}
           id={`question-${question.id}`}
-          sx={{ mt: { xs: 6, sm: 8, md: 10, lg: 12, xl: 14 }, mx: "auto", width: "100%", maxWidth: { xs: "90%", sm: "800px" } }}
+          sx={{
+            mt: { xs: 18, sm: 20, md: 22, lg: 24, xl: 26 },
+            mx: "auto",
+            width: "100%",
+            maxWidth: { xs: "90%", sm: "800px" },
+          }}
         >
           <Typography
-            sx={{ fontWeight: "bold", fontSize: { xs: 18, sm: 24 }, textAlign: "center" }}
+            sx={{
+              fontWeight: "bold",
+              fontSize: { xs: 18, sm: 24 },
+              textAlign: "center",
+              color: theme.palette.text.primary,
+            }}
           >
             {question.text}
           </Typography>
 
           <Box
-            sx={{ mt: { xs: 3, sm: 4, md: 5 }, display: "flex", justifyContent: "space-around", alignItems: "center" }}
+            sx={{
+              mt: { xs: 3, sm: 4, md: 5 },
+              display: "flex",
+              justifyContent: "space-around",
+              alignItems: "center",
+            }}
           >
-             <CircleBoxBigleft
+            <CircleBoxBigleft
               onClick={() => handleBoxClick(question.id, 5)}
               selected={answers[question.id] === 5}
               questionId={question.id}
@@ -211,12 +273,21 @@ export default function Quiz() {
             />
           </Box>
           <Box
-            sx={{ display: "flex", justifyContent: "space-between", mx: { xs: 2, sm: 4, md: 6 }, mt: { xs: 1, sm: 2 } }}
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              mx: { xs: 2, sm: 4, md: 6 },
+              mt: { xs: 1, sm: 2 },
+            }}
           >
-            <Typography sx={{ color: "rgb(242, 135, 5)", fontWeight: "bold" }}>
+            <Typography
+              sx={{ color: theme.palette.primary.main, fontWeight: "bold" }}
+            >
               そう思う
             </Typography>
-            <Typography sx={{ color: "rgb(4, 119, 191)", fontWeight: "bold" }}>
+            <Typography
+              sx={{ color: theme.palette.secondary.main, fontWeight: "bold" }}
+            >
               そう思わない
             </Typography>
           </Box>
@@ -224,19 +295,82 @@ export default function Quiz() {
       ))}
 
       <Box
-        sx={{ display: "flex", justifyContent: "space-between", width: "100%", maxWidth: { xs: "90%", sm: "800px" }, mt: { xs: 4, sm: 6 } }}
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          width: "100%",
+          maxWidth: { xs: "90%", sm: "800px" },
+          mt: { xs: 4, sm: 6 },
+        }}
       >
-        <Button onClick={goToPreviousPage} disabled={page === 0} variant="outlined">
+        <Button
+          onClick={goToPreviousPage}
+          disabled={page === 0}
+          variant="outlined"
+          sx={{
+            color: "#007AFF !important",
+            borderColor: "#007AFF !important",
+            backgroundColor: "#FFFFFF !important",
+            borderRadius: 2,
+            borderWidth: "2px !important",
+            minWidth: 120,
+            height: 45,
+            fontWeight: "bold",
+            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+            "&:hover": {
+              borderColor: "#0056CC !important",
+              color: "#0056CC !important",
+              backgroundColor: "#F0F8FF !important",
+            },
+            "&:disabled": {
+              borderColor: "#CCCCCC !important",
+              color: "#888888 !important",
+              backgroundColor: "#F5F5F5 !important",
+            },
+          }}
+        >
           前のページ
         </Button>
 
         {page < Math.ceil(quizData.questions.length / questionsPerPage) - 1 ? (
-          <Button onClick={goToNextPage} variant="contained">
+          <Button
+            onClick={goToNextPage}
+            variant="contained"
+            sx={{
+              backgroundColor: "#007AFF !important",
+              color: "#FFFFFF !important",
+              borderRadius: 2,
+              minWidth: 120,
+              height: 45,
+              fontWeight: "bold",
+              boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+              "&:hover": {
+                backgroundColor: "#0056CC !important",
+                boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
+              },
+            }}
+          >
             次のページ
           </Button>
         ) : (
-          <Button onClick={handleSubmit} variant="contained" color="success">
-            診断する
+          <Button
+            onClick={handleSubmit}
+            variant="contained"
+            sx={{
+              backgroundColor: "#4CAF50 !important",
+              color: "#FFFFFF !important",
+              borderRadius: 2,
+              minWidth: 120,
+              height: 45,
+              fontWeight: "bold",
+              boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+              "&:hover": {
+                backgroundColor: "#388E3C !important",
+                boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
+              },
+            }}
+          >
+            アンケートを完了する
           </Button>
         )}
       </Box>

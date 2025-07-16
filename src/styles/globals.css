@@ -24,6 +24,38 @@ svg,
   font-style: normal;
   font-display: swap;
 }
+
+html,
 body {
   font-family: "Zen Maru Gothic", sans-serif;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh; /* height: 100% を min-height: 100vh に変更 */
+  overflow-x: hidden; /* 横スクロールを完全に無効化 */
+}
+
+/* スクロール範囲を制限 */
+#__next {
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* スクロールバーのスタイル調整 */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }

@@ -10,7 +10,8 @@
     "lint": "eslint --fix \"src/**/*.{js,jsx,ts,tsx}\"",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json,css,md}\"",
     "server": "node server.mjs",
-    "start:all": "concurrently \"npm run server\" \"npm run dev\""
+    "start:all": "concurrently \"npm run server\" \"npm run dev\"",
+    "test:firebase": "node scripts/test-firebase.js"
   },
   "dependencies": {
     "@emotion/react": "^11.11.1",
@@ -27,6 +28,7 @@
     "dotenv": "^16.4.7",
     "eslint-config-next": "13.4.11",
     "express": "^4.21.2",
+    "firebase": "^11.10.0",
     "framer-motion": "^11.13.1",
     "next": "^13.4.11",
     "next-auth": "^4.24.11",
@@ -43,6 +45,7 @@
     "typescript": "5.1.6"
   },
   "devDependencies": {
+    "@types/pg": "^8.15.4",
     "@typescript-eslint/eslint-plugin": "^8.27.0",
     "@typescript-eslint/parser": "^8.27.0",
     "concurrently": "^9.1.2",

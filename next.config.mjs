@@ -4,6 +4,9 @@ import withPWA from "next-pwa";
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
+  compiler: {
+    emotion: true,
+  },
   images: {
     unoptimized: true,
   },

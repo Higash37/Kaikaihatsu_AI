@@ -1,8 +1,12 @@
 // app.tsx とは → Next.js のアプリケーション全体における初期設定や共通のレイアウトなどを設定する(ラップする)場所
-import '@/styles/globals.css' // globals.css (今回は TailWind を使用) から css をインポート
-import type { AppProps } from 'next/app' // component と pageProps を型定義するため使用 型安全のために用意。
+import "@/styles/globals.css"; // globals.css (今回は TailWind を使用) から css をインポート
+
+import { ThemeProvider } from "@mui/material/styles";
+import type { AppProps } from "next/app"; // component と pageProps を型定義するため使用 型安全のために用意。
 // ↑ いわゆるフォーマットを用意しているようなもの。
-import { SessionProvider } from 'next-auth/react'
+import { SessionProvider } from "next-auth/react";
+
+import theme from "../theme"; // 作成したテーマをインポート
 
 //全ページに共通するレイアウト
 // 1. ① export default function App() {} とは → Next.js が すべてのページの上に適用する特別なコンポーネント
@@ -13,11 +17,15 @@ import { SessionProvider } from 'next-auth/react'
 function MyApp({ Component, pageProps: { session, ...pageProps } }: AppProps) {
   return (
     <SessionProvider session={session}>
-      <Component {...pageProps} />
+      <ThemeProvider theme={theme}>
+        {" "}
+        {/* ThemeProvider でアプリケーションをラップ */}
+        <Component {...pageProps} />
+      </ThemeProvider>
     </SessionProvider>
-  )
+  );
 }
 
-export default MyApp
+export default MyApp;
 
 // つまり、 return <index.tsx { message: "Hello from server!" } という形になる!
