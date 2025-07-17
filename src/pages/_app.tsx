@@ -6,6 +6,7 @@ import type { AppProps } from "next/app"; // component と pageProps を型定�
 // ↑ いわゆるフォーマットを用意しているようなもの。
 import { SessionProvider } from "next-auth/react";
 
+import { AuthProvider } from "../contexts/AuthContext"; // 認証コンテキストをインポート
 import theme from "../theme"; // 作成したテーマをインポート
 
 //全ページに共通するレイアウト
@@ -18,9 +19,11 @@ function MyApp({ Component, pageProps: { session, ...pageProps } }: AppProps) {
   return (
     <SessionProvider session={session}>
       <ThemeProvider theme={theme}>
-        {" "}
-        {/* ThemeProvider でアプリケーションをラップ */}
-        <Component {...pageProps} />
+        <AuthProvider>
+          {" "}
+          {/* AuthProvider を追加 */}
+          <Component {...pageProps} />
+        </AuthProvider>
       </ThemeProvider>
     </SessionProvider>
   );

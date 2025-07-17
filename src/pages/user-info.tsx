@@ -129,6 +129,7 @@ const PersonalInfoForm: React.FC = () => {
       sx={{
         backgroundColor: theme.palette.background.default,
         minHeight: "100vh",
+        paddingTop: { xs: "70px", sm: "80px" }, // ヘッダー分のマージン
       }}
     >
       <Header />

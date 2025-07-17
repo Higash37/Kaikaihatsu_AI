@@ -13,6 +13,7 @@ import { useRouter } from "next/router";
 import { useState, useEffect } from "react";
 
 import Header from "@/components/Header";
+import Layout from "@/components/Layout";
 import {
   getThemeKey,
   selectPersonResult,
@@ -165,89 +166,136 @@ export default function ResultPage() {
   );
 
   return (
-    <Box
-      sx={{
-        backgroundColor: theme.palette.background.default,
-        minHeight: "100vh",
-        width: "100%",
-        userSelect: "none",
-        WebkitUserSelect: "none",
-        MozUserSelect: "none",
-        msUserSelect: "none",
-      }}
-    >
-      <Header />
+    <Layout>
       <Box
         sx={{
-          pt: { xs: 12, sm: 14, md: 16 },
-          pb: 6,
-          px: { xs: 2, sm: 4, md: 6 },
-          maxWidth: "900px",
-          mx: "auto",
+          backgroundColor: theme.palette.background.default,
+          minHeight: "100vh",
+          paddingTop: { xs: "70px", sm: "80px" }, // ヘッダー分のマージン
+          width: "100%",
           userSelect: "none",
           WebkitUserSelect: "none",
           MozUserSelect: "none",
           msUserSelect: "none",
         }}
       >
-        <Paper
-          elevation={0}
+        <Header />
+        <Box
           sx={{
-            p: { xs: 2, md: 4 },
-            mb: 4,
-            borderRadius: theme.shape.borderRadius,
-            backgroundColor: theme.palette.background.paper,
-            boxShadow: theme.shadows[1],
-            position: "relative",
+            pt: { xs: 12, sm: 14, md: 16 },
+            pb: 6,
+            px: { xs: 2, sm: 4, md: 6 },
+            maxWidth: "900px",
+            mx: "auto",
             userSelect: "none",
             WebkitUserSelect: "none",
             MozUserSelect: "none",
             msUserSelect: "none",
-            pointerEvents: "auto",
           }}
         >
-          <Typography
-            variant="h4"
-            component="h1"
-            textAlign="center"
+          <Paper
+            elevation={0}
             sx={{
-              fontWeight: "bold",
-              mb: 1,
-              color: theme.palette.text.primary,
-            }}
-          >
-            アンケート結果
-          </Typography>
-          <Typography
-            variant="h6"
-            component="h2"
-            textAlign="center"
-            sx={{ mb: 4, color: theme.palette.text.secondary }}
-          >
-            {resultData.title}
-          </Typography>
-
-          <Box
-            sx={{
-              textAlign: "center",
-              p: 3,
-              backgroundColor: theme.palette.primary.main,
-              color: theme.palette.common.white,
+              p: { xs: 2, md: 4 },
+              mb: 4,
               borderRadius: theme.shape.borderRadius,
+              backgroundColor: theme.palette.background.paper,
+              boxShadow: theme.shadows[1],
+              position: "relative",
+              userSelect: "none",
+              WebkitUserSelect: "none",
+              MozUserSelect: "none",
+              msUserSelect: "none",
+              pointerEvents: "auto",
             }}
           >
-            <Typography variant="h5" sx={{ fontWeight: "bold" }}>
-              最も顕著な特性は...
+            <Typography
+              variant="h4"
+              component="h1"
+              textAlign="center"
+              sx={{
+                fontWeight: "bold",
+                mb: 1,
+                color: theme.palette.text.primary,
+              }}
+            >
+              アンケート結果
             </Typography>
-            <Typography variant="h3" sx={{ fontWeight: "bold", my: 2 }}>
-              {topIndicator.name}
+            <Typography
+              variant="h6"
+              component="h2"
+              textAlign="center"
+              sx={{ mb: 4, color: theme.palette.text.secondary }}
+            >
+              {resultData.title}
             </Typography>
-            <Typography variant="body1">{topIndicator.description}</Typography>
-          </Box>
-        </Paper>
 
-        {/* 特性（Traits）表示セクション */}
-        {diagnosisResult.traits && diagnosisResult.traits.length > 0 && (
+            <Box
+              sx={{
+                textAlign: "center",
+                p: 3,
+                backgroundColor: theme.palette.primary.main,
+                color: theme.palette.common.white,
+                borderRadius: theme.shape.borderRadius,
+              }}
+            >
+              <Typography variant="h5" sx={{ fontWeight: "bold" }}>
+                最も顕著な特性は...
+              </Typography>
+              <Typography variant="h3" sx={{ fontWeight: "bold", my: 2 }}>
+                {topIndicator.name}
+              </Typography>
+              <Typography variant="body1">
+                {topIndicator.description}
+              </Typography>
+            </Box>
+          </Paper>
+
+          {/* 特性（Traits）表示セクション */}
+          {diagnosisResult.traits && diagnosisResult.traits.length > 0 && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: { xs: 2, md: 4 },
+                borderRadius: theme.shape.borderRadius,
+                backgroundColor: theme.palette.background.paper,
+                boxShadow: theme.shadows[1],
+                position: "relative",
+                userSelect: "none",
+                WebkitUserSelect: "none",
+                MozUserSelect: "none",
+                msUserSelect: "none",
+                pointerEvents: "auto",
+              }}
+            >
+              <Typography
+                variant="h5"
+                component="h3"
+                sx={{
+                  fontWeight: "bold",
+                  mb: 3,
+                  color: theme.palette.text.primary,
+                }}
+              >
+                あなたの特性
+              </Typography>
+              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                {diagnosisResult.traits.map((trait, index) => (
+                  <Chip
+                    key={index}
+                    label={trait}
+                    variant="outlined"
+                    color="primary"
+                    sx={{
+                      fontSize: "0.9rem",
+                      fontWeight: "medium",
+                    }}
+                  />
+                ))}
+              </Box>
+            </Paper>
+          )}
+
           <Paper
             elevation={0}
             sx={{
@@ -272,199 +320,157 @@ export default function ResultPage() {
                 color: theme.palette.text.primary,
               }}
             >
-              あなたの特性
+              詳細なプロファイル
             </Typography>
-            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-              {diagnosisResult.traits.map((trait, index) => (
-                <Chip
-                  key={index}
-                  label={trait}
-                  variant="outlined"
-                  color="primary"
-                  sx={{
-                    fontSize: "0.9rem",
-                    fontWeight: "medium",
-                  }}
-                />
+            <Grid container spacing={3}>
+              {calculatedScores.map((item, index) => (
+                <Grid item xs={12} sm={6} key={index}>
+                  <Box>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        mb: 0.5,
+                      }}
+                    >
+                      <Typography
+                        variant="body1"
+                        sx={{
+                          fontWeight: "medium",
+                          color: theme.palette.text.primary,
+                        }}
+                      >
+                        {item.name}
+                      </Typography>
+                      <Typography
+                        variant="body1"
+                        sx={{
+                          fontWeight: "bold",
+                          color: theme.palette.primary.main,
+                        }}
+                      >
+                        {item.score}%
+                      </Typography>
+                    </Box>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: theme.palette.text.secondary,
+                        mb: 1,
+                      }}
+                    >
+                      {item.description}
+                    </Typography>
+                    <LinearProgress
+                      variant="determinate"
+                      value={item.score}
+                      sx={{
+                        height: 10,
+                        borderRadius: 5,
+                        backgroundColor: theme.palette.divider,
+                        "& .MuiLinearProgress-bar": {
+                          backgroundColor: theme.palette.primary.main,
+                        },
+                      }}
+                    />
+                  </Box>
+                </Grid>
               ))}
-            </Box>
+            </Grid>
           </Paper>
-        )}
 
-        <Paper
-          elevation={0}
-          sx={{
-            p: { xs: 2, md: 4 },
-            borderRadius: theme.shape.borderRadius,
-            backgroundColor: theme.palette.background.paper,
-            boxShadow: theme.shadows[1],
-            position: "relative",
-            userSelect: "none",
-            WebkitUserSelect: "none",
-            MozUserSelect: "none",
-            msUserSelect: "none",
-            pointerEvents: "auto",
-          }}
-        >
-          <Typography
-            variant="h5"
-            component="h3"
+          {/* 保存ボタンとステータス */}
+          <Paper
+            elevation={3}
             sx={{
-              fontWeight: "bold",
-              mb: 3,
-              color: theme.palette.text.primary,
+              padding: 3,
+              marginTop: 3,
+              backgroundColor: theme.palette.background.paper,
+              borderRadius: 2,
+              position: "relative",
+              userSelect: "none",
+              WebkitUserSelect: "none",
+              MozUserSelect: "none",
+              msUserSelect: "none",
+              pointerEvents: "auto",
             }}
           >
-            詳細なプロファイル
-          </Typography>
-          <Grid container spacing={3}>
-            {calculatedScores.map((item, index) => (
-              <Grid item xs={12} sm={6} key={index}>
-                <Box>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      mb: 0.5,
-                    }}
-                  >
-                    <Typography
-                      variant="body1"
-                      sx={{
-                        fontWeight: "medium",
-                        color: theme.palette.text.primary,
-                      }}
-                    >
-                      {item.name}
-                    </Typography>
-                    <Typography
-                      variant="body1"
-                      sx={{
-                        fontWeight: "bold",
-                        color: theme.palette.primary.main,
-                      }}
-                    >
-                      {item.score}%
-                    </Typography>
-                  </Box>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      color: theme.palette.text.secondary,
-                      mb: 1,
-                    }}
-                  >
-                    {item.description}
-                  </Typography>
-                  <LinearProgress
-                    variant="determinate"
-                    value={item.score}
-                    sx={{
-                      height: 10,
-                      borderRadius: 5,
-                      backgroundColor: theme.palette.divider,
-                      "& .MuiLinearProgress-bar": {
-                        backgroundColor: theme.palette.primary.main,
-                      },
-                    }}
-                  />
-                </Box>
-              </Grid>
-            ))}
-          </Grid>
-        </Paper>
-
-        {/* 保存ボタンとステータス */}
-        <Paper
-          elevation={3}
-          sx={{
-            padding: 3,
-            marginTop: 3,
-            backgroundColor: theme.palette.background.paper,
-            borderRadius: 2,
-            position: "relative",
-            userSelect: "none",
-            WebkitUserSelect: "none",
-            MozUserSelect: "none",
-            msUserSelect: "none",
-            pointerEvents: "auto",
-          }}
-        >
-          <Box sx={{ textAlign: "center" }}>
-            <Button
-              variant="contained"
-              size="large"
-              onClick={handleSaveResult}
-              disabled={saveStatus === "saving"}
-              sx={{
-                backgroundColor: "#007AFF !important",
-                color: "#FFFFFF !important",
-                mb: 2,
-                mr: 1,
-                minWidth: 200,
-                height: 50,
-                fontSize: "1.1rem",
-                fontWeight: "bold",
-                borderRadius: 2,
-                boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-                "&:hover": {
-                  backgroundColor: "#0056CC !important",
-                  boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
-                },
-                "&:disabled": {
-                  backgroundColor: "#CCCCCC !important",
-                  color: "#888888 !important",
-                },
-              }}
-            >
-              {saveStatus === "saving"
-                ? "保存中..."
-                : "結果をデータベースに保存"}
-            </Button>
-
-            {/* トップページに戻るボタン */}
-            <Button
-              variant="contained"
-              size="large"
-              onClick={() => router.push("/")}
-              sx={{
-                backgroundColor: "#28A745 !important",
-                color: "#FFFFFF !important",
-                mb: 2,
-                ml: 1,
-                minWidth: 200,
-                height: 50,
-                fontSize: "1.1rem",
-                fontWeight: "bold",
-                borderRadius: 2,
-                border: "none",
-                boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-                "&:hover": {
-                  backgroundColor: "#218838 !important",
-                  boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
-                },
-              }}
-            >
-              トップページへ戻る
-            </Button>
-
-            {saveMessage && (
-              <Alert
-                severity={
-                  saveStatus === "saved"
-                    ? "success"
-                    : saveStatus === "error"
-                      ? "error"
-                      : "info"
-                }
-                sx={{ mt: 2 }}
+            <Box sx={{ textAlign: "center" }}>
+              <Button
+                variant="contained"
+                size="large"
+                onClick={handleSaveResult}
+                disabled={saveStatus === "saving"}
+                sx={{
+                  backgroundColor: "#007AFF !important",
+                  color: "#FFFFFF !important",
+                  mb: 2,
+                  mr: 1,
+                  minWidth: 200,
+                  height: 50,
+                  fontSize: "1.1rem",
+                  fontWeight: "bold",
+                  borderRadius: 2,
+                  boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                  "&:hover": {
+                    backgroundColor: "#0056CC !important",
+                    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
+                  },
+                  "&:disabled": {
+                    backgroundColor: "#CCCCCC !important",
+                    color: "#888888 !important",
+                  },
+                }}
               >
-                {saveMessage}
-              </Alert>
-            )}
-          </Box>
-        </Paper>
+                {saveStatus === "saving"
+                  ? "保存中..."
+                  : "結果をデータベースに保存"}
+              </Button>
+
+              {/* トップページに戻るボタン */}
+              <Button
+                variant="contained"
+                size="large"
+                onClick={() => router.push("/")}
+                sx={{
+                  backgroundColor: "#28A745 !important",
+                  color: "#FFFFFF !important",
+                  mb: 2,
+                  ml: 1,
+                  minWidth: 200,
+                  height: 50,
+                  fontSize: "1.1rem",
+                  fontWeight: "bold",
+                  borderRadius: 2,
+                  border: "none",
+                  boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                  "&:hover": {
+                    backgroundColor: "#218838 !important",
+                    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
+                  },
+                }}
+              >
+                トップページへ戻る
+              </Button>
+
+              {saveMessage && (
+                <Alert
+                  severity={
+                    saveStatus === "saved"
+                      ? "success"
+                      : saveStatus === "error"
+                        ? "error"
+                        : "info"
+                  }
+                  sx={{ mt: 2 }}
+                >
+                  {saveMessage}
+                </Alert>
+              )}
+            </Box>
+          </Paper>
+        </Box>
       </Box>
-    </Box>
+    </Layout>
   );
 }

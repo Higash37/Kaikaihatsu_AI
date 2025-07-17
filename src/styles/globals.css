@@ -33,6 +33,8 @@ body {
   width: 100%;
   min-height: 100vh; /* height: 100% を min-height: 100vh に変更 */
   overflow-x: hidden; /* 横スクロールを完全に無効化 */
+  overscroll-behavior: none; /* 縦横両方のオーバースクロールを無効化 */
+  -webkit-overflow-scrolling: touch; /* iOSでの滑らかなスクロール */
 }
 
 /* スクロール範囲を制限 */
@@ -40,6 +42,15 @@ body {
   width: 100%;
   min-height: 100vh;
   overflow-x: hidden;
+  overscroll-behavior: none; /* 縦横両方のオーバースクロールを無効化 */
+}
+
+/* モバイルデバイスでの追加制御 */
+body {
+  position: relative;
+  overflow-x: hidden;
+  overscroll-behavior-y: none; /* 縦方向のオーバースクロールを明示的に無効化 */
+  overscroll-behavior-x: none; /* 横方向のオーバースクロールを明示的に無効化 */
 }
 
 /* スクロールバーのスタイル調整 */
