@@ -1,53 +1,32 @@
 import { NextApiRequest, NextApiResponse } from "next";
-
-import { ApiResponse, DiagnosisItem } from "@/types";
-
-// サンプルデータ
-const sampleData: DiagnosisItem[] = [
-  {
-    id: "1",
-    gender: "男性",
-    age: 25,
-    emotion_score: 75,
-    rational_score: 60,
-    active_score: 80,
-    passive_score: 40,
-  },
-  {
-    id: "2",
-    gender: "女性",
-    age: 30,
-    emotion_score: 85,
-    rational_score: 70,
-    active_score: 65,
-    passive_score: 55,
-  },
-];
+import { getAllQuizResults } from "@/utils/firebase";
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<ApiResponse<DiagnosisItem[]>>
+  res: NextApiResponse
 ) {
-  if (req.method === "GET") {
-    try {
-      // ローカルのサンプルデータを返す
-      res.status(200).json({
-        success: true,
-        data: sampleData,
-        message: "診断データを取得しました",
-      });
-    } catch (error) {
-      console.error("診断データ取得エラー:", error);
-      res.status(500).json({
-        success: false,
-        error: "診断データの取得中にエラーが発生しました",
-      });
-    }
-  } else {
-    res.setHeader("Allow", ["GET"]);
-    res.status(405).json({
+  if (req.method !== "GET") {
+    return res.status(405).json({ message: "Method not allowed" });
+  }
+
+  try {
+    const results = await getAllQuizResults();
+
+    // 診断データのみをフィルタリング
+    const diagnosisData = results.filter(
+      (result: any) => result.type === "diagnosis"
+    );
+
+    res.status(200).json({
+      success: true,
+      data: diagnosisData,
+      message: "診断データを取得しました",
+    });
+  } catch (error) {
+    console.error("診断データ取得エラー:", error);
+    res.status(500).json({
       success: false,
-      error: "Method Not Allowed",
+      error: "診断データの取得中にエラーが発生しました",
     });
   }
 }
