@@ -1,3 +1,6 @@
+// ユーザーロール定義
+export type UserRole = "creator" | "respondent" | "admin";
+
 // クイズ・アンケートの基本データ型
 export interface Quiz {
   id: string;
@@ -25,6 +28,66 @@ export interface Quiz {
   enableDemographics: boolean; // 人口統計分析を有効にするか
   enableLocationTracking: boolean; // 位置情報追跡を有効にするか
   enableRating: boolean; // 評価機能を有効にするか
+
+  // 作成者向け分析データ
+  analyticsData?: QuizAnalytics;
+}
+
+// 分析データ
+export interface QuizAnalytics {
+  totalResponses: number;
+
+  // 人口統計分析
+  demographicBreakdown: {
+    gender: Record<string, number>;
+    ageRange: Record<string, number>;
+    location: Record<string, number>;
+    occupation: Record<string, number>;
+  };
+
+  // 回答分析
+  questionAnalytics: QuestionAnalytics[];
+
+  // 位置情報分析
+  locationAnalytics?: {
+    popularAreas: {
+      prefecture: string;
+      city: string;
+      responseCount: number;
+      percentage: number;
+    }[];
+    heatmapData: any[];
+  };
+
+  // 評価分析
+  ratingAnalytics?: {
+    averageRating: number;
+    ratingDistribution: Record<string, number>;
+    totalRatings: number;
+  };
+}
+
+// 質問別分析
+export interface QuestionAnalytics {
+  questionId: string;
+  questionText: string;
+  responseCount: number;
+  averageTime?: number; // 平均回答時間（秒）
+  skipRate?: number; // スキップ率
+
+  // 選択肢別の回答数
+  optionCounts?: Record<string, number>;
+  answerDistribution?: { [answer: string]: number };
+
+  // スケール統計（数値回答の場合）
+  scaleStats?: {
+    average: number;
+    median: number;
+    mode: number;
+  };
+
+  // テキスト回答の場合
+  textResponses?: string[];
 }
 
 // 質問の定義
@@ -99,66 +162,6 @@ export interface QuizResult {
   percentile?: number; // 上位何%か
   recommendations?: string[];
   imageUrl?: string;
-}
-
-// 分析データ
-export interface QuizAnalytics {
-  quizId: string;
-  totalResponses: number;
-
-  // 人口統計分析
-  demographicBreakdown: {
-    gender: Record<string, number>;
-    ageRange: Record<string, number>;
-    location: Record<string, number>;
-    occupation: Record<string, number>;
-  };
-
-  // 回答分析
-  questionAnalytics: QuestionAnalytics[];
-
-  // 位置情報分析
-  locationAnalytics?: {
-    heatmapData: LocationPoint[];
-    popularAreas: PopularArea[];
-  };
-
-  // 時系列分析
-  timeSeriesData: TimeSeriesPoint[];
-
-  // 評価分析
-  ratingAnalytics?: {
-    averageRating: number;
-    ratingDistribution: Record<number, number>;
-    feedbackSentiment?: "positive" | "negative" | "neutral";
-  };
-}
-
-// 質問別分析
-export interface QuestionAnalytics {
-  questionId: string;
-  questionText: string;
-  responseCount: number;
-
-  // 選択肢別の回答数
-  optionCounts?: Record<string, number>;
-
-  // テキスト回答の場合
-  textResponses?: string[];
-
-  // スケール回答の場合
-  scaleStats?: {
-    average: number;
-    median: number;
-    mode: number;
-    distribution: Record<number, number>;
-  };
-
-  // 人口統計別の回答分布
-  demographicBreakdown?: {
-    gender: Record<string, Record<string, number>>;
-    ageRange: Record<string, Record<string, number>>;
-  };
 }
 
 // 位置情報ポイント

@@ -112,6 +112,7 @@ const Header = () => {
       <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
         {/* デスクトップメニュー */}
         <Box sx={{ display: { xs: "none", md: "flex" }, gap: 1 }}>
+          {/* 一般的なナビゲーション */}
           <Button
             color="inherit"
             onClick={() => navigateTo("/getting-started")}
@@ -126,6 +127,26 @@ const Header = () => {
           >
             ヘルプ
           </Button>
+
+          {/* ログインユーザー向けナビゲーション */}
+          {user && (
+            <>
+              <Button
+                color="inherit"
+                onClick={() => navigateTo("/create")}
+                sx={{ textTransform: "none", fontWeight: "bold" }}
+              >
+                クイズ作成
+              </Button>
+              <Button
+                color="inherit"
+                onClick={() => navigateTo("/history")}
+                sx={{ textTransform: "none" }}
+              >
+                履歴・分析
+              </Button>
+            </>
+          )}
         </Box>
 
         {/* ユーザーメニュー */}
@@ -243,6 +264,26 @@ const Header = () => {
             </ListItemIcon>
             <ListItemText primary="ヘルプ" />
           </MenuItem>
+
+          {/* ログインユーザー向けメニュー */}
+          {user && (
+            <>
+              <Divider />
+              <MenuItem onClick={() => navigateTo("/create")}>
+                <ListItemIcon>
+                  <PersonIcon />
+                </ListItemIcon>
+                <ListItemText primary="クイズ作成" />
+              </MenuItem>
+              <MenuItem onClick={() => navigateTo("/history")}>
+                <ListItemIcon>
+                  <SettingsIcon />
+                </ListItemIcon>
+                <ListItemText primary="履歴・分析" />
+              </MenuItem>
+            </>
+          )}
+
           {user && (
             <>
               <Divider />

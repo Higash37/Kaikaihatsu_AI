@@ -18,71 +18,36 @@ import React, { useState, useEffect } from "react";
 
 import Header from "@/components/Header";
 import Layout from "@/components/Layout";
-
-// 仮のデータ型（後でFirestoreから取得）
-interface PublicQuiz {
-  id: string;
-  title: string;
-  description: string;
-  creatorName: string;
-  creatorId: string;
-  tags: string[];
-  popularity: number;
-  questionCount: number;
-  createdAt: string;
-}
+import { Quiz } from "@/types/quiz";
 
 export default function Home() {
-  const [quizzes, setQuizzes] = useState<PublicQuiz[]>([]);
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"popularity" | "recent">("popularity");
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    // 仮のデータ（後でFirestoreから取得）
-    const mockQuizzes: PublicQuiz[] = [
-      {
-        id: "1",
-        title: "あなたの隠れた才能診断",
-        description: "5つの質問であなたの知らない才能を発見しましょう",
-        creatorName: "田中太郎",
-        creatorId: "user1",
-        tags: ["才能", "診断", "自己分析"],
-        popularity: 1250,
-        questionCount: 10,
-        createdAt: "2024-01-15",
-      },
-      {
-        id: "2",
-        title: "理想のキャリアパス診断",
-        description: "あなたに最適なキャリアの方向性を見つけよう",
-        creatorName: "佐藤花子",
-        creatorId: "user2",
-        tags: ["キャリア", "転職", "適性"],
-        popularity: 890,
-        questionCount: 15,
-        createdAt: "2024-01-20",
-      },
-      {
-        id: "3",
-        title: "コミュニケーションスタイル診断",
-        description: "あなたのコミュニケーションの特徴を知ろう",
-        creatorName: "山田次郎",
-        creatorId: "user3",
-        tags: ["コミュニケーション", "性格", "人間関係"],
-        popularity: 2100,
-        questionCount: 12,
-        createdAt: "2024-01-25",
-      },
-    ];
+    const fetchPublicQuizzes = async () => {
+      try {
+        // 公開クイズを取得
+        const response = await fetch(
+          `/api/public-quizzes?sort=${sortBy}&limit=20`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setQuizzes(data.quizzes || []);
+        }
+      } catch (error) {
+        console.error("クイズの取得に失敗しました:", error);
+        setQuizzes([]); // エラー時は空配列
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    // 実際の実装では、ここでFirestoreからデータを取得
-    setTimeout(() => {
-      setQuizzes(mockQuizzes);
-      setLoading(false);
-    }, 1000);
-  }, []);
+    fetchPublicQuizzes();
+  }, [sortBy]);
 
   const filteredQuizzes = quizzes
     .filter(
@@ -104,7 +69,6 @@ export default function Home() {
     });
 
   const handleQuizClick = (quizId: string) => {
-    // 実際の実装では、選択したクイズのデータを設定してクイズページに遷移
     router.push(`/quiz?id=${quizId}`);
   };
 
@@ -295,13 +259,26 @@ export default function Home() {
               ))}
             </Grid>
 
-            {filteredQuizzes.length === 0 && !loading && (
+            {loading ? (
               <Box sx={{ textAlign: "center", py: 4 }}>
                 <Typography color="text.secondary">
-                  該当するアンケートが見つかりませんでした
+                  クイズを読み込み中...
                 </Typography>
               </Box>
-            )}
+            ) : filteredQuizzes.length === 0 ? (
+              <Box sx={{ textAlign: "center", py: 4 }}>
+                <Typography variant="h6" color="text.secondary" gutterBottom>
+                  {searchQuery
+                    ? "該当するクイズが見つかりませんでした"
+                    : "まだ公開クイズがありません"}
+                </Typography>
+                {!searchQuery && (
+                  <Typography color="text.secondary">
+                    クリエイターが作成したクイズがここに表示されます
+                  </Typography>
+                )}
+              </Box>
+            ) : null}
           </motion.div>
         </Box>
       </Box>

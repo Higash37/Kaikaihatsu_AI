@@ -1,4 +1,11 @@
-import { Search, Schedule, Delete, Edit, Share } from "@mui/icons-material";
+import {
+  Search,
+  Schedule,
+  Delete,
+  Edit,
+  Share,
+  Analytics,
+} from "@mui/icons-material";
 import {
   Box,
   Typography,
@@ -15,6 +22,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Alert,
 } from "@mui/material";
 import { motion } from "framer-motion";
 import { useRouter } from "next/router";
@@ -22,70 +30,48 @@ import React, { useState, useEffect } from "react";
 
 import Header from "@/components/Header";
 import Layout from "@/components/Layout";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import { useAuth } from "@/contexts/AuthContext";
+import { Quiz } from "@/types/quiz";
 
-// 仮のデータ型（後でFirestoreから取得）
-interface MyQuiz {
-  id: string;
-  title: string;
-  description: string;
-  tags: string[];
-  popularity: number;
-  questionCount: number;
-  createdAt: string;
-  isPublic: boolean;
+// クイズ型定義を更新
+interface MyQuiz extends Quiz {
+  // 追加のUI用プロパティ
 }
 
-export default function History() {
+function History() {
   const [quizzes, setQuizzes] = useState<MyQuiz[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedQuiz, setSelectedQuiz] = useState<MyQuiz | null>(null);
   const router = useRouter();
+  const { user } = useAuth();
 
   useEffect(() => {
-    // 仮のデータ（後でFirestoreから取得）
-    const mockQuizzes: MyQuiz[] = [
-      {
-        id: "1",
-        title: "チームメンバーの隠れた強みを見つけるための適性診断",
-        description:
-          "チームの各メンバーの強みを発見し、より効果的なチーム編成を実現するための診断です。",
-        tags: ["チーム", "強み", "適性"],
-        popularity: 45,
-        questionCount: 15,
-        createdAt: "2024-01-10",
-        isPublic: true,
-      },
-      {
-        id: "2",
-        title: "新入社員向けキャリア適性診断",
-        description:
-          "新入社員が自分に合ったキャリアパスを見つけるための診断テストです。",
-        tags: ["キャリア", "新入社員", "適性"],
-        popularity: 123,
-        questionCount: 20,
-        createdAt: "2024-01-05",
-        isPublic: true,
-      },
-      {
-        id: "3",
-        title: "プライベート診断テスト",
-        description: "個人用の診断テストです。",
-        tags: ["プライベート", "個人"],
-        popularity: 0,
-        questionCount: 10,
-        createdAt: "2024-01-12",
-        isPublic: false,
-      },
-    ];
+    const fetchUserQuizzes = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
-    // 実際の実装では、ここでFirestoreからユーザーの作成したクイズを取得
-    setTimeout(() => {
-      setQuizzes(mockQuizzes);
-      setLoading(false);
-    }, 1000);
-  }, []);
+      try {
+        // ユーザーが作成したクイズを取得
+        const response = await fetch(`/api/user-quizzes?userId=${user.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          setQuizzes(data.quizzes || []);
+        }
+      } catch (error) {
+        console.error("クイズの取得に失敗しました:", error);
+        setQuizzes([]); // エラー時は空配列
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserQuizzes();
+  }, [user]);
 
   const filteredQuizzes = quizzes
     .filter(
@@ -110,10 +96,18 @@ export default function History() {
     setDeleteDialogOpen(true);
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (selectedQuiz) {
-      // 実際の実装では、ここでFirestoreからデータを削除
-      setQuizzes(quizzes.filter((q) => q.id !== selectedQuiz.id));
+      try {
+        const response = await fetch(`/api/quiz/${selectedQuiz.id}`, {
+          method: "DELETE",
+        });
+        if (response.ok) {
+          setQuizzes(quizzes.filter((q) => q.id !== selectedQuiz.id));
+        }
+      } catch (error) {
+        console.error("クイズの削除に失敗しました:", error);
+      }
       setDeleteDialogOpen(false);
       setSelectedQuiz(null);
     }
@@ -123,8 +117,11 @@ export default function History() {
     router.push(`/create?edit=${quizId}`);
   };
 
+  const handleAnalyticsClick = (quizId: string) => {
+    router.push(`/analytics?id=${quizId}`);
+  };
+
   const handleShareClick = (quizId: string) => {
-    // 実際の実装では、共有リンクを生成
     const shareUrl = `${window.location.origin}/quiz?id=${quizId}`;
     if (typeof window !== "undefined" && window.navigator?.clipboard) {
       window.navigator.clipboard.writeText(shareUrl);
@@ -315,13 +312,23 @@ export default function History() {
                         <Box>
                           <IconButton
                             size="small"
+                            onClick={() => handleAnalyticsClick(quiz.id)}
+                            title="データ分析"
+                            sx={{ color: "#34C759" }}
+                          >
+                            <Analytics />
+                          </IconButton>
+                          <IconButton
+                            size="small"
                             onClick={() => handleEditClick(quiz.id)}
+                            title="編集"
                           >
                             <Edit />
                           </IconButton>
                           <IconButton
                             size="small"
                             onClick={() => handleShareClick(quiz.id)}
+                            title="共有"
                           >
                             <Share />
                           </IconButton>
@@ -329,6 +336,7 @@ export default function History() {
                             size="small"
                             onClick={() => handleDeleteClick(quiz)}
                             color="error"
+                            title="削除"
                           >
                             <Delete />
                           </IconButton>
@@ -386,3 +394,14 @@ export default function History() {
     </Layout>
   );
 }
+
+// ページをProtectedRouteでラップ
+function HistoryPage() {
+  return (
+    <ProtectedRoute>
+      <History />
+    </ProtectedRoute>
+  );
+}
+
+export default HistoryPage;

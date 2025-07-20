@@ -58,6 +58,7 @@ export default async function handler(
         id: userDoc.id,
         username: userData.username,
         email: userData.email,
+        role: userData.role,
         profile: userData.profile,
         stats: userData.stats,
         createdAt: userData.createdAt,

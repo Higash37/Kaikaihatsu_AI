@@ -18,12 +18,14 @@ import {
 import { useTheme } from "@mui/material/styles";
 import { motion } from "framer-motion";
 import { useRouter } from "next/router";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 import Header from "@/components/Header";
 import Layout from "@/components/Layout";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import { useAuth } from "@/contexts/AuthContext";
 
-export default function Create() {
+function Create() {
   const [theme, setTheme] = useState("");
   const [questionCount, setQuestionCount] = useState(10);
   const [tags, setTags] = useState<string[]>([]);
@@ -35,6 +37,15 @@ export default function Create() {
   const [error, setError] = useState("");
   const router = useRouter();
   const muiTheme = useTheme();
+  const { user } = useAuth();
+
+  // ユーザーがログインしているかチェック
+  useEffect(() => {
+    if (!user) {
+      // ログインしていない場合は認証ページへ
+      router.push("/auth");
+    }
+  }, [user, router]);
 
   // 推奨タグ
   const suggestedTags = [
@@ -62,6 +73,12 @@ export default function Create() {
       setError("テーマを入力してください。");
       return;
     }
+
+    if (!user) {
+      setError("ログインが必要です。");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
@@ -79,6 +96,9 @@ export default function Create() {
           enableDemographics,
           enableLocationTracking,
           enableRating,
+          creatorId: user.id,
+          creatorName:
+            user.username || user.profile?.displayName || "匿名ユーザー",
         }),
       });
 
@@ -93,8 +113,8 @@ export default function Create() {
         window.sessionStorage.setItem("quizData", JSON.stringify(quizData));
       }
 
-      // クイズページに遷移
-      router.push("/quiz");
+      // クイズページに遷移（クイズIDを含める）
+      router.push(`/quiz?id=${quizData.id}`);
     } catch (err: any) {
       setError(err.message || "エラーが発生しました。");
     } finally {
@@ -386,3 +406,14 @@ export default function Create() {
     </Layout>
   );
 }
+
+// ページをProtectedRouteでラップ
+function CreatePage() {
+  return (
+    <ProtectedRoute>
+      <Create />
+    </ProtectedRoute>
+  );
+}
+
+export default CreatePage;

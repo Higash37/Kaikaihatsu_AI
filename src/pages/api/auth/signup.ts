@@ -19,7 +19,7 @@ export default async function handler(
     return res.status(405).json({ message: "Method not allowed" });
   }
 
-  const { username, password, email } = req.body;
+  const { username, password, email, role = "creator" } = req.body;
 
   if (!username || !password) {
     return res
@@ -90,7 +90,7 @@ export default async function handler(
       updatedAt: new Date().toISOString(),
       lastLoginAt: new Date().toISOString(),
       isActive: true,
-      role: "user",
+      role: role, // ユーザーが選択したロール
     };
 
     // 特定のIDでドキュメントを作成
@@ -102,6 +102,7 @@ export default async function handler(
         id: userId,
         username: newUser.username,
         email: newUser.email,
+        role: newUser.role,
         profile: newUser.profile,
         createdAt: newUser.createdAt,
       },

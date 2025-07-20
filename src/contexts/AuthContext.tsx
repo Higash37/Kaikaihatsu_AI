@@ -1,9 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 
+import { UserRole } from "@/types/quiz";
+
 interface User {
   id: string;
   username: string;
   email?: string;
+  role: UserRole; // creator, respondent, admin
   profile?: {
     displayName: string;
     bio: string;
@@ -26,7 +29,11 @@ interface User {
 interface AuthContextType {
   user: User | null;
   login: (username: string, password: string) => Promise<void>;
-  signup: (username: string, password: string) => Promise<void>;
+  signup: (
+    username: string,
+    password: string,
+    role?: UserRole
+  ) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
 }
@@ -77,13 +84,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     localStorage.setItem("user", JSON.stringify(userData));
   };
 
-  const signup = async (username: string, password: string) => {
+  const signup = async (
+    username: string,
+    password: string,
+    role: UserRole = "respondent"
+  ) => {
     const response = await fetch("/api/auth/signup", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ username, password, role }),
     });
 
     if (!response.ok) {

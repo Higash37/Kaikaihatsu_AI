@@ -76,16 +76,60 @@ export default function Quiz() {
   const handleSubmit = async () => {
     if (!quizData) return;
 
-    const resultData = {
-      ...quizData,
-      answers,
-    };
+    try {
+      // クイズ回答データを構築
+      const responseData = {
+        quizId: (router.query.id as string) || "unknown", // URLからクイズIDを取得
+        answers: Object.entries(answers).map(([questionId, value]) => ({
+          questionId: questionId,
+          value: value || 0,
+          text: undefined, // スケール回答なのでtextはundefined
+        })),
+        demographics: {
+          // デモグラフィック情報があれば追加
+        },
+        rating: undefined, // 評価機能があれば追加
+        location: undefined, // 位置情報機能があれば追加
+      };
 
-    // 診断結果をセッションストレージに保存
-    if (typeof window !== "undefined") {
-      window.sessionStorage.setItem("quizResult", JSON.stringify(resultData));
+      // Firestoreに回答データを保存
+      const response = await fetch("/api/responses", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(responseData),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save response");
+      }
+
+      // 診断結果をセッションストレージに保存（結果ページ用）
+      const resultData = {
+        ...quizData,
+        answers,
+      };
+
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem("quizResult", JSON.stringify(resultData));
+      }
+
+      router.push("/result");
+    } catch (error) {
+      console.error("回答の保存に失敗しました:", error);
+      // エラーが発生してもとりあえず結果ページに遷移
+      const resultData = {
+        ...quizData,
+        answers,
+      };
+
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem("quizResult", JSON.stringify(resultData));
+      }
+
+      router.push("/result");
     }
-    router.push("/result");
   };
 
   const goToNextPage = () => {

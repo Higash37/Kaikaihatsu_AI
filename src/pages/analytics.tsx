@@ -12,6 +12,7 @@ import {
   ListItem,
   ListItemText,
   LinearProgress,
+  Alert,
 } from "@mui/material";
 import { motion } from "framer-motion";
 import { useRouter } from "next/router";
@@ -19,7 +20,9 @@ import React, { useState, useEffect, useCallback } from "react";
 
 import Header from "@/components/Header";
 import Layout from "@/components/Layout";
-import { QuizAnalytics } from "@/types/quiz";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import { useAuth } from "@/contexts/AuthContext";
+import { QuizAnalytics, Quiz } from "@/types/quiz";
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -43,26 +46,48 @@ function TabPanel(props: TabPanelProps) {
   );
 }
 
-export default function QuizAnalyticsPage() {
+function QuizAnalyticsPage() {
   const router = useRouter();
   const { id } = router.query;
   const [analytics, setAnalytics] = useState<QuizAnalytics | null>(null);
+  const [_quiz, setQuiz] = useState<Quiz | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const { user } = useAuth();
   const [currentTab, setCurrentTab] = useState(0);
 
   const loadAnalytics = useCallback(async () => {
+    if (!id || !user) return;
+
     try {
-      const response = await fetch(`/api/quiz/analytics?id=${id}`);
-      if (response.ok) {
-        const data = await response.json();
-        setAnalytics(data);
+      // クイズ情報と分析データを取得
+      const [quizResponse, analyticsResponse] = await Promise.all([
+        fetch(`/api/quiz/${id}`),
+        fetch(`/api/quiz/${id}/analytics`),
+      ]);
+
+      if (quizResponse.ok && analyticsResponse.ok) {
+        const quizData = await quizResponse.json();
+        const analyticsData = await analyticsResponse.json();
+
+        // クイズの所有者チェック
+        if (quizData.creatorId !== user.id && user.role !== "admin") {
+          setError("このクイズの分析データを表示する権限がありません。");
+          return;
+        }
+
+        setQuiz(quizData);
+        setAnalytics(analyticsData.analytics || analyticsData);
+      } else {
+        setError("データの取得に失敗しました。");
       }
     } catch (err) {
       console.error("分析データの読み込みエラー:", err);
+      setError("データの取得中にエラーが発生しました。");
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, user]);
 
   useEffect(() => {
     if (id) {
@@ -265,6 +290,23 @@ export default function QuizAnalyticsPage() {
     );
   }
 
+  if (error) {
+    return (
+      <Layout>
+        <Box sx={{ p: 3 }}>
+          <Alert severity="error">{error}</Alert>
+          <Button
+            variant="contained"
+            onClick={() => router.push("/history")}
+            sx={{ mt: 2 }}
+          >
+            履歴に戻る
+          </Button>
+        </Box>
+      </Layout>
+    );
+  }
+
   if (!analytics) {
     return (
       <Layout>
@@ -431,3 +473,14 @@ export default function QuizAnalyticsPage() {
     </Layout>
   );
 }
+
+// ページをProtectedRouteでラップ
+function AnalyticsPage() {
+  return (
+    <ProtectedRoute>
+      <QuizAnalyticsPage />
+    </ProtectedRoute>
+  );
+}
+
+export default AnalyticsPage;
