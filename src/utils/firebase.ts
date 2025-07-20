@@ -24,6 +24,11 @@ const requiredEnvVars = [
   "NEXT_PUBLIC_FIREBASE_APP_ID",
 ];
 
+// Firebase設定が完全かチェック
+const hasFirebaseConfig = requiredEnvVars.every(
+  (varName) => process.env[varName]
+);
+
 // 開発環境でのみ環境変数をチェック
 if (process.env.NODE_ENV === "development") {
   const missingVars = requiredEnvVars.filter(
@@ -31,38 +36,60 @@ if (process.env.NODE_ENV === "development") {
   );
   if (missingVars.length > 0) {
     console.warn("Missing Firebase environment variables:", missingVars);
+    console.warn(
+      "Firebase features will be disabled. Using sample data instead."
+    );
   }
 }
 
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
+// Firebase初期化（設定がある場合のみ）
+let app: any = null;
+let db: any = null;
+let auth: any = null;
+let _analytics: any = null;
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+if (hasFirebaseConfig) {
+  // Your web app's Firebase configuration
+  const firebaseConfig = {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  };
 
-// Initialize Firestore
-const db = getFirestore(app);
+  // Initialize Firebase
+  app = initializeApp(firebaseConfig);
 
-// Initialize Auth
-const auth = getAuth(app);
+  // Initialize Firestore
+  db = getFirestore(app);
 
-// Analytics はブラウザ環境でのみ初期化
-let _analytics = null;
-if (typeof window !== "undefined") {
-  _analytics = getAnalytics(app);
+  // Initialize Auth
+  auth = getAuth(app);
+
+  // Analytics はブラウザ環境でのみ初期化
+  if (typeof window !== "undefined") {
+    _analytics = getAnalytics(app);
+  }
+} else {
+  console.warn("Firebase is not configured. Using sample data mode.");
 }
 
 export { app, db, auth, _analytics as analytics };
 
+// Firebaseが利用可能かチェックする関数
+const isFirebaseAvailable = () => {
+  return hasFirebaseConfig && db !== null;
+};
+
 // アンケート結果を保存する関数
 export async function saveQuizResult(quizData: any) {
+  if (!isFirebaseAvailable()) {
+    console.warn("Firebase not available, skipping save");
+    return "sample-result-id";
+  }
+
   try {
     const docRef = await addDoc(collection(db, "quiz_results"), {
       ...quizData,
@@ -78,6 +105,11 @@ export async function saveQuizResult(quizData: any) {
 
 // 全ての結果を取得する関数
 export async function getAllQuizResults() {
+  if (!isFirebaseAvailable()) {
+    console.warn("Firebase not available, returning empty array");
+    return [];
+  }
+
   try {
     const querySnapshot = await getDocs(collection(db, "quiz_results"));
     const results = querySnapshot.docs.map((doc) => ({
@@ -93,6 +125,11 @@ export async function getAllQuizResults() {
 
 // 特定の結果を取得する関数
 export async function getQuizResult(id: string) {
+  if (!isFirebaseAvailable()) {
+    console.warn("Firebase not available, returning null");
+    return null;
+  }
+
   try {
     const docRef = doc(db, "quiz_results", id);
     const docSnap = await getDoc(docRef);
@@ -113,6 +150,11 @@ export async function getQuizResult(id: string) {
 
 // 結果を更新する関数
 export async function updateQuizResult(id: string, updateData: any) {
+  if (!isFirebaseAvailable()) {
+    console.warn("Firebase not available, skipping update");
+    return;
+  }
+
   try {
     const docRef = doc(db, "quiz_results", id);
     await updateDoc(docRef, {
@@ -128,6 +170,11 @@ export async function updateQuizResult(id: string, updateData: any) {
 
 // ユーザー管理関数
 export async function createUserProfile(userId: string, userData: any) {
+  if (!isFirebaseAvailable()) {
+    console.warn("Firebase not available, skipping user creation");
+    return userId;
+  }
+
   try {
     const docRef = doc(db, "users", userId);
     await setDoc(docRef, {
@@ -143,6 +190,11 @@ export async function createUserProfile(userId: string, userData: any) {
 }
 
 export async function getUserProfile(userId: string) {
+  if (!isFirebaseAvailable()) {
+    console.warn("Firebase not available, returning null");
+    return null;
+  }
+
   try {
     const docRef = doc(db, "users", userId);
     const docSnap = await getDoc(docRef);
@@ -162,6 +214,11 @@ export async function getUserProfile(userId: string) {
 }
 
 export async function updateUserProfile(userId: string, updateData: any) {
+  if (!isFirebaseAvailable()) {
+    console.warn("Firebase not available, skipping user update");
+    return;
+  }
+
   try {
     const docRef = doc(db, "users", userId);
     await updateDoc(docRef, {
@@ -177,6 +234,11 @@ export async function updateUserProfile(userId: string, updateData: any) {
 
 // Quiz管理関数
 export async function createQuiz(quizData: any) {
+  if (!isFirebaseAvailable()) {
+    console.warn("Firebase not available, skipping quiz creation");
+    return "sample-quiz-id";
+  }
+
   try {
     const docRef = await addDoc(collection(db, "quizzes"), {
       ...quizData,
@@ -191,6 +253,11 @@ export async function createQuiz(quizData: any) {
 }
 
 export async function getQuizzes(userId?: string) {
+  if (!isFirebaseAvailable()) {
+    console.warn("Firebase not available, returning empty array");
+    return [];
+  }
+
   try {
     const quizzesRef = collection(db, "quizzes");
     const querySnapshot = await getDocs(quizzesRef);

@@ -11,6 +11,7 @@ import {
   TextField,
   ToggleButton,
   ToggleButtonGroup,
+  Button,
 } from "@mui/material";
 import { motion } from "framer-motion";
 import { useRouter } from "next/router";
@@ -30,13 +31,22 @@ export default function Home() {
   useEffect(() => {
     const fetchPublicQuizzes = async () => {
       try {
+        console.log("公開クイズ取得開始...");
         // 公開クイズを取得
         const response = await fetch(
           `/api/public-quizzes?sort=${sortBy}&limit=20`
         );
         if (response.ok) {
           const data = await response.json();
+          console.log("取得したクイズデータ:", data);
           setQuizzes(data.quizzes || []);
+        } else {
+          console.error(
+            "APIレスポンスエラー:",
+            response.status,
+            response.statusText
+          );
+          setQuizzes([]);
         }
       } catch (error) {
         console.error("クイズの取得に失敗しました:", error);
@@ -79,6 +89,14 @@ export default function Home() {
     if (newSortBy !== null) {
       setSortBy(newSortBy);
     }
+  };
+
+  const clearSessionStorage = () => {
+    sessionStorage.clear();
+    console.log("sessionStorageをクリアしました");
+    alert(
+      "セッションストレージをクリアしました。ページを再読み込みしてください。"
+    );
   };
 
   return (
@@ -144,8 +162,10 @@ export default function Home() {
               }}
             />
 
-            {/* ソート切り替え */}
-            <Box sx={{ display: "flex", justifyContent: "center", mb: 3 }}>
+            {/* ソート切り替えとデバッグボタン */}
+            <Box
+              sx={{ display: "flex", justifyContent: "center", mb: 3, gap: 2 }}
+            >
               <ToggleButtonGroup
                 value={sortBy}
                 exclusive
@@ -162,6 +182,16 @@ export default function Home() {
                   新着順
                 </ToggleButton>
               </ToggleButtonGroup>
+
+              {/* デバッグ用ボタン */}
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={clearSessionStorage}
+                sx={{ fontSize: "0.75rem" }}
+              >
+                セッションクリア
+              </Button>
             </Box>
 
             {/* アンケートカード一覧 */}
@@ -213,6 +243,46 @@ export default function Home() {
                           {quiz.description}
                         </Typography>
 
+                        {/* 回答数と作成者情報 */}
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            mb: 2,
+                          }}
+                        >
+                          <Typography variant="caption" color="text.secondary">
+                            {quiz.creatorName}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            color="primary.main"
+                            sx={{ fontWeight: "bold" }}
+                          >
+                            {quiz.totalResponses || 0} 回答
+                          </Typography>
+                        </Box>
+
+                        {/* アクションボタン */}
+                        <Box sx={{ display: "flex", gap: 1, mt: "auto" }}>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/analytics?id=${quiz.id}`);
+                            }}
+                            sx={{
+                              flex: 1,
+                              fontSize: "0.75rem",
+                              py: 0.5,
+                            }}
+                          >
+                            分析を見る
+                          </Button>
+                        </Box>
+
                         {/* タグ */}
                         <Box sx={{ mb: 2 }}>
                           {quiz.tags.slice(0, 3).map((tag, index) => (
@@ -223,18 +293,6 @@ export default function Home() {
                               sx={{ mr: 0.5, mb: 0.5 }}
                             />
                           ))}
-                        </Box>
-
-                        {/* 作成者情報 */}
-                        <Box
-                          sx={{ display: "flex", alignItems: "center", mb: 1 }}
-                        >
-                          <Avatar sx={{ width: 24, height: 24, mr: 1 }}>
-                            <Person />
-                          </Avatar>
-                          <Typography variant="body2" color="text.secondary">
-                            {quiz.creatorName}
-                          </Typography>
                         </Box>
 
                         {/* 統計情報 */}

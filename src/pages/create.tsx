@@ -103,7 +103,8 @@ function Create() {
       });
 
       if (!response.ok) {
-        throw new Error("アンケートの生成に失敗しました。");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "アンケートの生成に失敗しました。");
       }
 
       const quizData = await response.json();
@@ -113,8 +114,11 @@ function Create() {
         window.sessionStorage.setItem("quizData", JSON.stringify(quizData));
       }
 
-      // クイズページに遷移（クイズIDを含める）
-      router.push(`/quiz?id=${quizData.id}`);
+      // 成功メッセージを表示
+      alert("アンケートが正常に生成されました！ホーム画面に反映されます。");
+
+      // ホーム画面に遷移（新しく生成されたクイズが表示される）
+      router.push("/");
     } catch (err: any) {
       setError(err.message || "エラーが発生しました。");
     } finally {

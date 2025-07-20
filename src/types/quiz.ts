@@ -24,6 +24,9 @@ export interface Quiz {
   // 質問データ
   questions: Question[];
 
+  // 4軸分析用データ
+  axes?: Axis[];
+
   // 分析設定
   enableDemographics: boolean; // 人口統計分析を有効にするか
   enableLocationTracking: boolean; // 位置情報追跡を有効にするか
@@ -90,6 +93,13 @@ export interface QuestionAnalytics {
   textResponses?: string[];
 }
 
+// 4軸分析用の軸定義
+export interface Axis {
+  id: number;
+  name: string;
+  description: string;
+}
+
 // 質問の定義
 export interface Question {
   id: string;
@@ -98,6 +108,7 @@ export interface Question {
   options?: string[]; // 選択肢（multiple_choice用）
   required: boolean;
   order: number;
+  axisId?: number; // 4軸分析用の軸ID
 }
 
 // 回答データ
