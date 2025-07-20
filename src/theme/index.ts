@@ -73,7 +73,7 @@ const theme = createTheme({
     },
     MuiSelect: {
       styleOverrides: {
-        root: {
+        select: {
           borderRadius: 10, // Selectコンポーネントの角丸
         },
       },
