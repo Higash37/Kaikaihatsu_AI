@@ -76,12 +76,8 @@ export interface AppError {
   details?: Record<string, any>;
 }
 
-// 質問の型定義
-export interface Question {
-  id: number;
-  text: string;
-  type: "emotion" | "rational" | "active" | "passive";
-}
+// 旧システム用のQuestion型は削除済み
+// 新システムではsrc/types/quiz.tsのQuestion型を使用
 
 // ゲージデータの型定義
 export interface GaugeData {

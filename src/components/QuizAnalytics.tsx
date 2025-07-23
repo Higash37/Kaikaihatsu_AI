@@ -1,4 +1,3 @@
-import React, { useState, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -28,7 +27,9 @@ import {
   LineController,
   RadialLinearScale,
 } from "chart.js";
+import React, { useState, useMemo } from "react";
 import { Bar, Pie, Scatter, Line, Radar } from "react-chartjs-2";
+
 import { Axis } from "@/types/quiz";
 
 ChartJS.register(

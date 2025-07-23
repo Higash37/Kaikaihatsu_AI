@@ -1,427 +1,252 @@
-import { Box, Button, Typography, LinearProgress } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
+import { ChevronLeft, ChevronRight, Check } from "@mui/icons-material";
+import { Box, Button, Typography, LinearProgress, Container } from "@mui/material";
 import { useRouter } from "next/router";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import React from "react";
 
 import Header from "@/components/Header";
 import Layout from "@/components/Layout";
-import {
-  CircleBoxBigleft,
-  CircleBoxMiddleLeft,
-  CircleBoxMiddleRight,
-  CircleBoxBigright,
-  CircleBoxSmall,
-} from "@/components/QuizHeart";
-
-// 新しいデータ構造に合わせた型定義
-type Question = {
-  id: number;
-  text: string;
-};
-
-type Indicator = {
-  id: number;
-  name: string;
-  description: string;
-};
-
-type QuizData = {
-  title: string;
-  questions: Question[];
-  indicators: Indicator[];
-};
+import QuestionInput from "@/components/QuestionInput";
+import { Quiz as QuizType, Answer } from "@/types/quiz";
 
 export default function Quiz() {
   const router = useRouter();
-  const theme = useTheme();
+  const { id } = router.query;
 
-  const [quizData, setQuizData] = useState<QuizData | null>(null);
-  const [answers, setAnswers] = useState<{ [id: number]: number | undefined }>(
-    {}
-  );
-  const [page, setPage] = useState(0);
-  const [isScrolling, setIsScrolling] = useState(false);
+  const [quiz, setQuiz] = useState<QuizType | null>(null);
+  const [answers, setAnswers] = useState<{ [questionId: string]: string | number | boolean }>({});
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const storedData = window.sessionStorage.getItem("quizData");
-      if (storedData) {
-        const parsedData: QuizData = JSON.parse(storedData);
-        setQuizData(parsedData);
-      } else {
-        // クイズデータがない場合はトップページに戻す
-        router.replace("/");
-      }
+    if (id) {
+      fetchQuiz(id as string);
     }
-  }, [router]);
+  }, [id]); // fetchQuizは依存配列に追加不要（関数内で定義されているため）
 
-  const questionsPerPage = 10;
-  const currentQuestions = useMemo(() => {
-    if (!quizData) return [];
-    return quizData.questions.slice(
-      page * questionsPerPage,
-      (page + 1) * questionsPerPage
-    );
-  }, [page, quizData]);
+  const fetchQuiz = async (quizId: string) => {
+    try {
+      const response = await fetch(`/api/quiz/${quizId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setQuiz(data.quiz);
+      } else {
+        console.error('クイズの取得に失敗しました');
+        router.push('/');
+      }
+    } catch (error) {
+      console.error('クイズ取得エラー:', error);
+      router.push('/');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const handleBoxClick = (questionId: number, value: number | undefined) => {
-    setAnswers((prev) => {
-      const prevValue = prev[questionId];
-      const newValue = prevValue === value ? undefined : value;
-      return { ...prev, [questionId]: newValue };
-    });
+  const handleAnswerChange = (questionId: string, value: string | number | boolean) => {
+    setAnswers(prev => ({
+      ...prev,
+      [questionId]: value
+    }));
+  };
+
+  const handleNext = () => {
+    if (quiz && currentQuestionIndex < quiz.questions.length - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(prev => prev - 1);
+    }
   };
 
   const handleSubmit = async () => {
-    if (!quizData) return;
+    if (!quiz) return;
 
+    setIsSubmitting(true);
     try {
-      // クイズ回答データを構築
+      // 回答データを構築
+      const answersArray: Answer[] = quiz.questions.map(question => ({
+        questionId: question.id,
+        value: answers[question.id] || (question.type === 'scale' ? 3 : ''),
+        text: question.type === 'text' ? String(answers[question.id] || '') : undefined
+      }));
+
       const responseData = {
-        quizId: (router.query.id as string) || "unknown", // URLからクイズIDを取得
-        answers: Object.entries(answers).map(([questionId, value]) => ({
-          questionId: questionId,
-          value: value || 0,
-          text: undefined, // スケール回答なのでtextはundefined
-        })),
+        quizId: quiz.id,
+        answers: answersArray,
         demographics: {
-          // デモグラフィック情報があれば追加
-        },
-        rating: undefined, // 評価機能があれば追加
-        location: undefined, // 位置情報機能があれば追加
+          // ユーザー情報があれば追加
+        }
       };
 
-      // Firestoreに回答データを保存
-      const response = await fetch("/api/responses", {
-        method: "POST",
+      const response = await fetch('/api/responses', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(responseData),
+        body: JSON.stringify(responseData)
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to save response");
+      if (response.ok) {
+        // 結果ページに遷移
+        router.push(`/result?id=${quiz.id}`);
+      } else {
+        throw new Error('回答の保存に失敗しました');
       }
-
-      // 診断結果をセッションストレージに保存（結果ページ用）
-      const resultData = {
-        ...quizData,
-        answers,
-      };
-
-      if (typeof window !== "undefined") {
-        window.sessionStorage.setItem("quizResult", JSON.stringify(resultData));
-      }
-
-      router.push("/result");
     } catch (error) {
-      console.error("回答の保存に失敗しました:", error);
-      // エラーが発生してもとりあえず結果ページに遷移
-      const resultData = {
-        ...quizData,
-        answers,
-      };
-
-      if (typeof window !== "undefined") {
-        window.sessionStorage.setItem("quizResult", JSON.stringify(resultData));
-      }
-
-      router.push("/result");
+      console.error('回答送信エラー:', error);
+      alert('回答の送信に失敗しました。もう一度お試しください。');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const goToNextPage = () => {
-    const allAnswered = currentQuestions.every(
-      (question) => answers[question.id] !== undefined
+  if (loading) {
+    return (
+      <Layout>
+        <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Typography>クイズを読み込み中...</Typography>
+        </Box>
+      </Layout>
     );
-    if (!allAnswered) {
-      alert("このページのすべての質問に回答してください。");
-      return;
-    }
-    if (quizData && (page + 1) * questionsPerPage < quizData.questions.length) {
-      setPage(page + 1);
-    }
-  };
-
-  const goToPreviousPage = () => {
-    if (page > 0) {
-      setPage(page - 1);
-    }
-  };
-
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    const handleScroll = () => {
-      setIsScrolling(true);
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        setIsScrolling(false);
-      }, 100);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-      clearTimeout(timeoutId);
-    };
-  }, []);
-
-  const progressPercentage = useMemo(() => {
-    if (!quizData) return 0;
-    const totalQuestions = quizData.questions.length;
-    const answeredCount = Object.values(answers).filter(
-      (value) => value !== undefined
-    ).length;
-    return totalQuestions > 0 ? (answeredCount / totalQuestions) * 100 : 0;
-  }, [answers, quizData]);
-
-  if (!quizData) {
-    // データロード中の表示
-    return <Typography>Loading...</Typography>;
   }
+
+  if (!quiz) {
+    return (
+      <Layout>
+        <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Typography>クイズが見つかりませんでした</Typography>
+        </Box>
+      </Layout>
+    );
+  }
+
+  const currentQuestion = quiz.questions[currentQuestionIndex];
+  const progress = ((currentQuestionIndex + 1) / quiz.questions.length) * 100;
+  const isLastQuestion = currentQuestionIndex === quiz.questions.length - 1;
+  const currentAnswer = answers[currentQuestion.id];
+
+  // 回答が必須かつ未入力かチェック
+  const isAnswerRequired = currentQuestion.required && 
+    (currentAnswer === undefined || currentAnswer === '' || currentAnswer === null);
 
   return (
     <Layout>
       <Box
         sx={{
-          py: { xs: 6, sm: 8, md: 10 },
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          backgroundColor: theme.palette.background.default,
           minHeight: "100vh",
-          paddingTop: { xs: "80px", sm: "90px" }, // ヘッダー分のマージン
-          width: "100%",
-          userSelect: "none",
-          WebkitUserSelect: "none",
-          MozUserSelect: "none",
-          msUserSelect: "none",
+          backgroundColor: "#f5f5f5",
+          paddingTop: { xs: "70px", sm: "80px" },
+          paddingBottom: "80px",
         }}
       >
         <Header />
-        <Box
-          sx={{
-            position: "fixed",
-            top: theme.spacing(8),
-            left: 0,
-            right: 0,
-            zIndex: 9,
-            backgroundColor: theme.palette.background.paper,
-            opacity: isScrolling ? 1 : 0.9,
-            transition: "opacity 0.3s ease-in-out",
-            p: 2,
-            boxShadow: theme.shadows[1],
-            userSelect: "none",
-            WebkitUserSelect: "none",
-            MozUserSelect: "none",
-            msUserSelect: "none",
-          }}
-        >
-          <Box
-            sx={{
-              width: "100%",
-              maxWidth: { xs: "90%", sm: "800px" },
-              mx: "auto",
-            }}
-          >
-            <Typography
-              variant="h5"
-              component="h1"
-              textAlign="center"
-              sx={{
-                mb: 1,
-                fontWeight: "bold",
-                color: theme.palette.text.primary,
-              }}
-            >
-              {quizData.title}
-            </Typography>
-            <LinearProgress
-              variant="determinate"
-              value={progressPercentage}
-              sx={{
-                height: { xs: 8, sm: 10 },
-                borderRadius: 5,
-                backgroundColor: theme.palette.divider,
-                "& .MuiLinearProgress-bar": {
-                  backgroundColor: theme.palette.primary.main,
-                },
-              }}
+        
+        {/* プログレスバー */}
+        <Box sx={{ position: 'fixed', top: { xs: 56, sm: 64 }, left: 0, right: 0, zIndex: 100, backgroundColor: 'white', borderBottom: '1px solid #e0e0e0' }}>
+          <Container maxWidth="md">
+            <Box sx={{ py: 2 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1, textAlign: 'center' }}>
+                質問 {currentQuestionIndex + 1} / {quiz.questions.length}
+              </Typography>
+              <LinearProgress
+                variant="determinate"
+                value={progress}
+                sx={{
+                  height: 8,
+                  borderRadius: 4,
+                  backgroundColor: '#e0e0e0',
+                  '& .MuiLinearProgress-bar': {
+                    backgroundColor: '#007AFF',
+                    borderRadius: 4,
+                  }
+                }}
+              />
+            </Box>
+          </Container>
+        </Box>
+
+        {/* 質問エリア */}
+        <Container maxWidth="md" sx={{ pt: 8 }}>
+          <Box sx={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <QuestionInput
+              question={currentQuestion}
+              value={currentAnswer}
+              onChange={(value) => handleAnswerChange(currentQuestion.id, value)}
             />
-            <Typography
-              sx={{
-                textAlign: "center",
-                mt: 1,
-                fontWeight: "bold",
-                fontSize: { xs: 12, sm: 14 },
-                color: theme.palette.text.secondary,
-              }}
-            >
-              回答進捗: {Math.round(progressPercentage)}%
-            </Typography>
           </Box>
-        </Box>
 
-        {currentQuestions.map((question) => (
-          <Box
-            key={question.id}
-            id={`question-${question.id}`}
-            sx={{
-              mt: { xs: 18, sm: 20, md: 22, lg: 24, xl: 26 },
-              mx: "auto",
-              width: "100%",
-              maxWidth: { xs: "90%", sm: "800px" },
+          {/* ナビゲーションボタン */}
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              mt: 4,
+              pt: 2,
+              borderTop: '1px solid #e0e0e0'
             }}
           >
-            <Typography
-              sx={{
-                fontWeight: "bold",
-                fontSize: { xs: 18, sm: 24 },
-                textAlign: "center",
-                color: theme.palette.text.primary,
+            <Button
+              variant="outlined"
+              onClick={handlePrevious}
+              disabled={currentQuestionIndex === 0}
+              startIcon={<ChevronLeft />}
+              sx={{ 
+                minWidth: 120,
+                borderRadius: 3,
+                py: 1.5 
               }}
             >
-              {question.text}
+              前の質問
+            </Button>
+
+            <Typography variant="body2" color="text.secondary">
+              {quiz.title}
             </Typography>
 
-            <Box
-              sx={{
-                mt: { xs: 3, sm: 4, md: 5 },
-                display: "flex",
-                justifyContent: "space-around",
-                alignItems: "center",
-              }}
-            >
-              <CircleBoxBigleft
-                onClick={() => handleBoxClick(question.id, 5)}
-                selected={answers[question.id] === 5}
-                questionId={question.id}
-              />
-              <CircleBoxMiddleLeft
-                onClick={() => handleBoxClick(question.id, 4)}
-                selected={answers[question.id] === 4}
-                questionId={question.id}
-              />
-              <CircleBoxSmall
-                onClick={() => handleBoxClick(question.id, 3)}
-                selected={answers[question.id] === 3}
-                questionId={question.id}
-              />
-              <CircleBoxMiddleRight
-                onClick={() => handleBoxClick(question.id, 2)}
-                selected={answers[question.id] === 2}
-                questionId={question.id}
-              />
-              <CircleBoxBigright
-                onClick={() => handleBoxClick(question.id, 1)}
-                selected={answers[question.id] === 1}
-                questionId={question.id}
-              />
-            </Box>
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                mx: { xs: 2, sm: 4, md: 6 },
-                mt: { xs: 1, sm: 2 },
-              }}
-            >
-              <Typography
-                sx={{ color: theme.palette.primary.main, fontWeight: "bold" }}
+            {isLastQuestion ? (
+              <Button
+                variant="contained"
+                onClick={handleSubmit}
+                disabled={isAnswerRequired || isSubmitting}
+                startIcon={<Check />}
+                sx={{
+                  minWidth: 120,
+                  borderRadius: 3,
+                  py: 1.5,
+                  backgroundColor: '#007AFF',
+                  '&:hover': {
+                    backgroundColor: '#0056CC',
+                  },
+                }}
               >
-                そう思う
-              </Typography>
-              <Typography
-                sx={{ color: theme.palette.secondary.main, fontWeight: "bold" }}
+                {isSubmitting ? '送信中...' : '完了'}
+              </Button>
+            ) : (
+              <Button
+                variant="contained"
+                onClick={handleNext}
+                disabled={isAnswerRequired}
+                endIcon={<ChevronRight />}
+                sx={{
+                  minWidth: 120,
+                  borderRadius: 3,
+                  py: 1.5,
+                  backgroundColor: '#007AFF',
+                  '&:hover': {
+                    backgroundColor: '#0056CC',
+                  },
+                }}
               >
-                そう思わない
-              </Typography>
-            </Box>
+                次の質問
+              </Button>
+            )}
           </Box>
-        ))}
-
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            width: "100%",
-            maxWidth: { xs: "90%", sm: "800px" },
-            mt: { xs: 4, sm: 6 },
-          }}
-        >
-          <Button
-            onClick={goToPreviousPage}
-            disabled={page === 0}
-            variant="outlined"
-            sx={{
-              color: "#007AFF !important",
-              borderColor: "#007AFF !important",
-              backgroundColor: "#FFFFFF !important",
-              borderRadius: 2,
-              borderWidth: "2px !important",
-              minWidth: 120,
-              height: 45,
-              fontWeight: "bold",
-              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
-              "&:hover": {
-                borderColor: "#0056CC !important",
-                color: "#0056CC !important",
-                backgroundColor: "#F0F8FF !important",
-              },
-              "&:disabled": {
-                borderColor: "#CCCCCC !important",
-                color: "#888888 !important",
-                backgroundColor: "#F5F5F5 !important",
-              },
-            }}
-          >
-            前のページ
-          </Button>
-
-          {page <
-          Math.ceil(quizData.questions.length / questionsPerPage) - 1 ? (
-            <Button
-              onClick={goToNextPage}
-              variant="contained"
-              sx={{
-                backgroundColor: "#007AFF !important",
-                color: "#FFFFFF !important",
-                borderRadius: 2,
-                minWidth: 120,
-                height: 45,
-                fontWeight: "bold",
-                boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-                "&:hover": {
-                  backgroundColor: "#0056CC !important",
-                  boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
-                },
-              }}
-            >
-              次のページ
-            </Button>
-          ) : (
-            <Button
-              onClick={handleSubmit}
-              variant="contained"
-              sx={{
-                backgroundColor: "#4CAF50 !important",
-                color: "#FFFFFF !important",
-                borderRadius: 2,
-                minWidth: 120,
-                height: 45,
-                fontWeight: "bold",
-                boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-                "&:hover": {
-                  backgroundColor: "#388E3C !important",
-                  boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
-                },
-              }}
-            >
-              アンケートを完了する
-            </Button>
-          )}
-        </Box>
+        </Container>
       </Box>
     </Layout>
   );

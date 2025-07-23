@@ -22,9 +22,18 @@ function generateQuizId(): string {
 // 期待するAIの応答の型定義
 type QuizData = {
   title: string;
-  questions: { id: number; text: string; axisId: number }[];
-  indicators: { id: number; name: string; description: string }[];
-  axes: { id: number; name: string; description: string }[];
+  description: string;
+  questions: { 
+    id: string; 
+    text: string; 
+    type: "scale" | "multiple_choice" | "text" | "yes_no";
+    options?: string[]; // multiple_choice用
+    required: boolean;
+    order: number;
+    axisId?: number;
+  }[];
+  indicators?: { id: number; name: string; description: string }[];
+  axes?: { id: number; name: string; description: string }[];
 };
 
 type ErrorResponse = {

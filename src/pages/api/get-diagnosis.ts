@@ -1,4 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
+
 import { getAllQuizResults } from "@/utils/firebase";
 
 export default async function handler(
