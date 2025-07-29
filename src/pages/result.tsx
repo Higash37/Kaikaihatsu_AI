@@ -8,7 +8,7 @@ import {
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { useRouter } from "next/router";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 
 import Header from "@/components/Header";
 import Layout from "@/components/Layout";
@@ -478,7 +478,7 @@ export default function ResultPage() {
                 {resultData?.diagnosis?.axisScores ? (
                   // 新しい診断システムの軸ラベル
                   <>
-                    {resultData.diagnosis.axisScores.map((axis, index) => {
+                    {resultData.diagnosis.axisScores.map((axis, _index) => {
                       if (axis.axisId === 1) { // X軸
                         return (
                           <React.Fragment key={axis.axisId}>

@@ -22,7 +22,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Alert,
 } from "@mui/material";
 import { motion } from "framer-motion";
 import { useRouter } from "next/router";
@@ -36,8 +35,8 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { Quiz } from "@/types/quiz";
 
 // クイズ型定義を更新
-interface MyQuiz extends Quiz {
-  // 追加のUI用プロパティ
+type MyQuiz = Quiz & {
+  // 追加のUI用プロパティがある場合はここに記述
 }
 
 function History() {

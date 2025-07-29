@@ -232,19 +232,20 @@ export const bulkExport = async (exportConfigs: ExportData[]): Promise<void> => 
             }).join(',')
           )
         ].join('\n');
-        mimeType = 'text/csv';
+        const _mimeType3 = 'text/csv';
         break;
       }
 
-      case 'json':
+      case 'json': {
         content = JSON.stringify({
           metadata: config.metadata,
           data: config.data,
         }, null, 2);
-        mimeType = 'application/json';
+        const _mimeType2 = 'application/json';
         break;
+      }
 
-      case 'xml':
+      case 'xml': {
         content = `<?xml version="1.0" encoding="UTF-8"?>
 <data>
   ${config.data.map((item, index) => `
@@ -253,8 +254,9 @@ export const bulkExport = async (exportConfigs: ExportData[]): Promise<void> => 
     <${key}>${escapeXML(String(value))}</${key}>`).join('')}
   </item>`).join('')}
 </data>`;
-        mimeType = 'application/xml';
+        const _mimeType = 'application/xml';
         break;
+      }
 
       default:
         continue;
@@ -331,9 +333,10 @@ export const applyFilters = (data: any[], filters: any): any[] => {
         return String(itemValue).toLowerCase().includes(value.toLowerCase());
       }
       
-      if (typeof value === 'object' && value.min !== undefined && value.max !== undefined) {
+      if (typeof value === 'object' && value !== null && 'min' in value && 'max' in value) {
         const numValue = Number(itemValue);
-        return numValue >= value.min && numValue <= value.max;
+        const rangeValue = value as { min: number; max: number };
+        return numValue >= rangeValue.min && numValue <= rangeValue.max;
       }
       
       return itemValue === value;

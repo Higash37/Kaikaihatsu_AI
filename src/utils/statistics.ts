@@ -271,7 +271,7 @@ export const calculateSignificance = (
 // 信頼区間計算
 export const calculateConfidenceInterval = (
   data: number[], 
-  confidence: number = 0.95
+  _confidence: number = 0.95
 ): { lower: number; upper: number; mean: number } => {
   if (data.length === 0) {
     return { lower: 0, upper: 0, mean: 0 };

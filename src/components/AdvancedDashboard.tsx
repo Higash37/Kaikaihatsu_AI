@@ -4,7 +4,6 @@ import {
   TrendingDown,
   People,
   Quiz,
-  Star,
   Refresh,
   Settings,
   Timeline,
@@ -40,7 +39,7 @@ import {
   Switch,
   FormControlLabel,
 } from '@mui/material';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   LineChart,
   Line,
@@ -60,12 +59,12 @@ import {
 import NotificationCenter from './NotificationCenter';
 
 import { useAuth } from '@/contexts/SupabaseAuthContext';
-import { getSafeDisplayName } from '@/utils/userDisplay';
 import {
   getUserStats,
   getQuizzes,
   getQuizDetailedStats,
 } from '@/utils/supabase';
+import { getSafeDisplayName } from '@/utils/userDisplay';
 
 interface DashboardStats {
   quizzesCreated: number;
@@ -106,13 +105,7 @@ const AdvancedDashboard: React.FC = () => {
   const [settingsAnchor, setSettingsAnchor] = useState<null | HTMLElement>(null);
   const [realTimeUpdates, setRealTimeUpdates] = useState(true);
 
-  useEffect(() => {
-    if (user) {
-      loadDashboardData();
-    }
-  }, [user, loadDashboardData]);
-
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
     if (!user) return;
 
     setLoading(true);
@@ -164,7 +157,13 @@ const AdvancedDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      loadDashboardData();
+    }
+  }, [user, loadDashboardData]);
 
   const handleRefresh = async () => {
     setRefreshing(true);

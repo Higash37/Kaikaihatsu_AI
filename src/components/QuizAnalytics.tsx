@@ -1,3 +1,4 @@
+import { BarChart, PieChart, ShowChart, BubbleChart, Timeline, Close, Fullscreen, FilterList } from '@mui/icons-material';
 import {
   Box,
   Typography,
@@ -8,12 +9,7 @@ import {
   Button,
   ToggleButton,
   ToggleButtonGroup,
-  Divider,
-  Alert,
-  LinearProgress,
   IconButton,
-  Menu,
-  MenuItem,
   Modal,
   Backdrop,
   Fade,
@@ -36,7 +32,6 @@ import {
 } from "chart.js";
 import React, { useState, useMemo } from "react";
 import { Bar, Pie, Scatter, Line, Radar } from "react-chartjs-2";
-import { BarChart, PieChart, ShowChart, BubbleChart, Timeline, Close, Fullscreen, FilterList } from '@mui/icons-material';
 
 import { Axis } from "@/types/quiz";
 
@@ -81,12 +76,11 @@ interface FilterOptions {
 type ChartType = 'bar' | 'pie' | 'line' | 'stats';
 
 export default function QuizAnalytics({
-  quizId,
   quizTitle,
   responses,
   questions,
   quizData,
-}: QuizAnalyticsProps) {
+}: Omit<QuizAnalyticsProps, 'quizId'>) {
   const [viewMode, setViewMode] = useState<"basic" | "advanced">("basic");
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
     ageRange: [0, 100],
@@ -369,12 +363,12 @@ export default function QuizAnalytics({
   }, [filteredResponses, quizData]);
 
   // 偏差値計算
-  const calculateZScore = (value: number, mean: number, std: number) => {
+  const _calculateZScore = (value: number, mean: number, std: number) => {
     return std === 0 ? 0 : (value - mean) / std;
   };
 
-  // 相関係数計算
-  const calculateCorrelation = (x: number[], y: number[]) => {
+  // 相関係数計算  
+  const _calculateCorrelation = (x: number[], y: number[]) => {
     const n = x.length;
     if (n !== y.length || n === 0) return 0;
 
@@ -429,8 +423,8 @@ export default function QuizAnalytics({
   };
 
   // 棒グラフのデータ（高さ変動対応）
-  const getBarChartData = (questionId: string, questionText: string) => {
-    const { distribution, stats } = getQuestionAnalytics(questionId);
+  const getBarChartData = (questionId: string, _questionText: string) => {
+    const { distribution, stats: _stats } = getQuestionAnalytics(questionId);
     const maxValue = Math.max(...Object.values(distribution));
 
     // デバッグ情報を出力
@@ -623,7 +617,7 @@ export default function QuizAnalytics({
   };
 
   // 高度な統計分析
-  const getAdvancedStatistics = () => {
+  const _getAdvancedStatistics = () => {
     const allValues = questions.map(q => {
       const values = filteredResponses
         .map(r => r.answers.find((a: any) => a.questionId === q.id)?.value)
@@ -1026,7 +1020,7 @@ export default function QuizAnalytics({
   };
 
 
-  const scatterChartOptions = {
+  const _scatterChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -1119,7 +1113,7 @@ export default function QuizAnalytics({
             size: windowWidth < 768 ? 8 : 10
           },
           maxRotation: windowWidth < 768 ? 45 : 0,
-          callback: function(value: any, index: number, values: any[]) {
+          callback: function(value: any, index: number, _values: any[]) {
             if (windowWidth < 768) {
               // モバイルでは日付を短縮
               return index % 2 === 0 ? value : '';
@@ -1177,7 +1171,7 @@ export default function QuizAnalytics({
               return `Q${index + 1}`;
             }
             const labels = questions.map((q, i) => {
-              const shortText =
+              const _shortText =
                 q.text.length > 20 ? q.text.substring(0, 20) + "..." : q.text;
               return `質問${i + 1}`;
             });

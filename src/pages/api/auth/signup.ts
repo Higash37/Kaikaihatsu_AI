@@ -37,7 +37,7 @@ export default async function handler(
 
   try {
     // ユーザー名の重複チェック
-    const { data: existingUser, error: checkError } = await supabase
+    const { data: existingUser, error: _checkError } = await supabase
       .from('profiles')
       .select('username')
       .eq('username', username)

@@ -2,17 +2,11 @@ import {
   Description,
   Assessment,
   PictureAsPdf,
-  TableChart,
-  InsertChart,
   Timeline,
-  PieChart,
   TrendingUp,
-  People,
   Quiz,
   Star,
   CheckCircle,
-  Error,
-  Warning,
 } from '@mui/icons-material';
 import {
   Box,
@@ -38,7 +32,6 @@ import {
   FormGroup,
   RadioGroup,
   Radio,
-  Chip,
   Alert,
   LinearProgress,
   Paper,
@@ -175,7 +168,7 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
 
       if (config.type === 'single' && config.quizIds.length > 0) {
         // 単一クイズのレポート
-        const quizStats = await getQuizDetailedStats(config.quizIds[0]);
+        const _quizStats = await getQuizDetailedStats(config.quizIds[0]);
         const periodData = await getTimePeriodStats(
           config.quizIds[0],
           config.dateRange.start.toISOString(),
@@ -223,7 +216,7 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
 
       } else if (config.type === 'comparison') {
         // 比較レポート
-        const comparisonData = await getComparisonStats(config.quizIds);
+        const _comparisonData = await getComparisonStats(config.quizIds);
         
         insights = [
           `${config.quizIds.length}個のクイズを比較分析`,
@@ -366,7 +359,14 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
                       onChange={(date) => 
                         updateConfig('dateRange', { ...config.dateRange, start: date || new Date() })
                       }
-                      renderInput={(params) => <TextField {...params} fullWidth />}
+                      slots={{
+                        textField: TextField
+                      }}
+                      slotProps={{
+                        textField: {
+                          fullWidth: true
+                        }
+                      }}
                     />
                   </Grid>
                   <Grid item xs={6}>
@@ -376,7 +376,14 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
                       onChange={(date) => 
                         updateConfig('dateRange', { ...config.dateRange, end: date || new Date() })
                       }
-                      renderInput={(params) => <TextField {...params} fullWidth />}
+                      slots={{
+                        textField: TextField
+                      }}
+                      slotProps={{
+                        textField: {
+                          fullWidth: true
+                        }
+                      }}
                     />
                   </Grid>
                 </Grid>

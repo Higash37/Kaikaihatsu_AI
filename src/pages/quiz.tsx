@@ -97,7 +97,7 @@ export default function Quiz() {
     if (router.isReady) {
       loadQuizData();
     }
-  }, [router.isReady, router.query.id]);
+  }, [router.isReady, router.query.id, router]);
 
   const questionsPerPage = 10;
   const currentQuestions = useMemo(() => {

@@ -1,9 +1,8 @@
 'use client'
 
 import { User } from '@supabase/supabase-js'
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useState } from 'react'
 
-import { createClient } from '@/lib/supabase/client'
 import type { Database } from '@/lib/supabase/database.types'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
@@ -43,17 +42,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     updated_at: new Date().toISOString()
   } as Profile;
   
-  const [user, setUser] = useState<User | null>(defaultUser)
-  const [profile, setProfile] = useState<Profile | null>(defaultProfile)
-  const [loading, setLoading] = useState(false) // 常にログイン済みなのでfalse
+  const [user, _setUser] = useState<User | null>(defaultUser)
+  const [profile, _setProfile] = useState<Profile | null>(defaultProfile)
+  const [_loading, _setLoading] = useState(false) // 常にログイン済みなのでfalse
 
   // Mock関数
-  const signUp = async (email: string, password: string, username: string) => {
+  const signUp = async (email: string, _password: string, username: string) => {
     console.log('Mock signUp called with:', email, username);
     // 何もしない（既にログイン済み）
   }
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, _password: string) => {
     console.log('Mock signIn called with:', email);
     // 何もしない（既にログイン済み）
   }
@@ -69,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signUp,
     signIn,
     signOut,
-    loading,
+    loading: false,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

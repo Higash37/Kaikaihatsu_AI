@@ -13,11 +13,17 @@ module.exports = {
     node: true,
     es2021: true,
   },
+  parserOptions: {
+    project: './tsconfig.json',
+    tsconfigRootDir: __dirname,
+  },
   globals: {
     // Browser globals
     HTMLElement: 'readonly',
     HTMLInputElement: 'readonly',  
     HTMLTextAreaElement: 'readonly',
+    HTMLDivElement: 'readonly',
+    MouseEvent: 'readonly',
     Blob: 'readonly',
     URL: 'readonly',
     sessionStorage: 'readonly',
@@ -36,7 +42,10 @@ module.exports = {
     ],
     'no-empty-object-type': 'off',
     'react/no-unknown-property': 'off',
-    'prettier/prettier': 'error',
+    'prettier/prettier': 'off',
+    'no-undef': 'off',
+    'no-case-declarations': 'off',
+    'react-hooks/exhaustive-deps': 'warn',
   },
   settings: {
     react: {

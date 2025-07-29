@@ -27,7 +27,7 @@ export const isAuthenticated = async (): Promise<boolean> => {
 };
 
 // Mock login function (always succeeds)
-export const login = async (email: string, password: string): Promise<User> => {
+export const login = async (email: string, _password: string): Promise<User> => {
   console.log('Mock login called with:', email);
   return DEFAULT_USER;
 };

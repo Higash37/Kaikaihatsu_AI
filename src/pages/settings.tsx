@@ -1,8 +1,6 @@
 import { 
-  Person, 
   Security, 
   Notifications, 
-  Delete,
   ChevronRight,
   AccountCircle,
   Language,
@@ -20,10 +18,7 @@ import {
   Container,
   Typography,
   Box,
-  Card,
-  CardContent,
   Button,
-  TextField,
   Switch,
   Alert,
   Dialog,
@@ -31,12 +26,11 @@ import {
   DialogContent,
   DialogActions,
   List,
-  ListItem,
   ListItemText,
   ListItemSecondaryAction,
   ListItemIcon,
-  Divider,
   ListItemButton,
+  Divider,
   useTheme,
   Paper,
 } from "@mui/material";
@@ -44,7 +38,6 @@ import React, { useState } from "react";
 
 import Layout from "../components/Layout";
 import ProtectedRoute from "../components/ProtectedRoute";
-import UserProfileForm from "../components/UserProfileForm";
 import { useAuth } from "../contexts/SupabaseAuthContext";
 
 // カスタムListItemコンポーネント
@@ -159,9 +152,9 @@ const SettingsPage: React.FC = () => {
   const [shareData, setShareData] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
-  const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [_activeSection, setActiveSection] = useState<string | null>(null);
 
-  const handleSaveSettings = () => {
+  const _handleSaveSettings = () => {
     // TODO: 設定保存のAPI呼び出し
     setSuccessMessage("設定を保存しました");
     setTimeout(() => setSuccessMessage(""), 3000);

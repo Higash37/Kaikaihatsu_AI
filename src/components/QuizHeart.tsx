@@ -117,6 +117,39 @@ const CircleBoxBigright: React.FC<Props> = (props) => (
   <HeartShape {...props} size={130} />
 );
 
+// スケール入力コンポーネントのProps
+interface QuizHeartProps {
+  selectedValue?: number;
+  onValueChange: (value: number) => void;
+}
+
+// スケール入力コンポーネント（1-5のハート選択）
+const QuizHeart: React.FC<QuizHeartProps> = ({ selectedValue, onValueChange }) => {
+  const heartComponents = [
+    CircleBoxBigleft,
+    CircleBoxMiddleLeft,
+    CircleBoxSmall,
+    CircleBoxMiddleRight,
+    CircleBoxBigright,
+  ];
+
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px' }}>
+      {heartComponents.map((HeartComponent, index) => {
+        const value = index + 1;
+        return (
+          <HeartComponent
+            key={index}
+            onClick={() => onValueChange(value)}
+            selected={selectedValue === value}
+            questionId={0} // スケール質問では自動スクロールは不要
+          />
+        );
+      })}
+    </div>
+  );
+};
+
 // エクスポート
 export {
   CircleBoxBigleft,
@@ -125,3 +158,5 @@ export {
   CircleBoxMiddleRight,
   CircleBoxBigright,
 };
+
+export default QuizHeart;

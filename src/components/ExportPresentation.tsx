@@ -26,7 +26,6 @@ import {
   Grid,
   Card,
   CardContent,
-  CardActions,
   Chip,
   LinearProgress,
   Alert,
@@ -121,16 +120,18 @@ const ExportPresentation: React.FC<ExportPresentationProps> = ({
 
     try {
       switch (options.format) {
-        case 'pdf':
+        case 'pdf': {
           const pdfBlob = await convertSlidesToPDF(previewData);
           downloadFile(pdfBlob, `${options.customTitle}.pdf`);
           break;
+        }
 
-        case 'html':
+        case 'html': {
           const htmlContent = generateHTMLPresentation(previewData);
           const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
           downloadFile(htmlBlob, `${options.customTitle}.html`);
           break;
+        }
 
         case 'pptx':
           // PowerPoint形式は今後実装

@@ -10,7 +10,7 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { useRouter } from "next/router";
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 
 import AxisCoordinateInput from "@/components/AxisCoordinateInput";
 import Header from "@/components/Header";
@@ -19,6 +19,7 @@ import ProgressGauge from "@/components/ProgressGauge";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import QuestionEditor from "@/components/QuestionEditor";
 import ResultPlacementGrid from "@/components/ResultPlacementGrid";
+import { useAuth } from "@/contexts/SupabaseAuthContext";
 
 // ステップ定義
 const STEPS = [
@@ -63,6 +64,7 @@ interface WizardData {
 
 function CreateWizard() {
   const router = useRouter();
+  const { user, profile } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -79,42 +81,8 @@ function CreateWizard() {
     questions: [],
   });
 
-  // URLパラメータからテーマと問題数を取得
-  React.useEffect(() => {
-    if (router.isReady) {
-      const { theme, questionCount } = router.query;
-      if (theme && typeof theme === "string") {
-        // テーマに基づいてサンプルデータを生成
-        const sampleData = generateSampleData(theme);
-        
-        setWizardData(prev => ({
-          ...prev,
-          theme: theme,
-          questionCount: questionCount ? parseInt(questionCount as string) : 10,
-          resultType: sampleData.resultType,
-          axes: [
-            { 
-              id: 1, 
-              name: sampleData.axes.x.name, 
-              description: sampleData.axes.x.description, 
-              positiveName: sampleData.axes.x.positive, 
-              negativeName: sampleData.axes.x.negative 
-            },
-            { 
-              id: 2, 
-              name: sampleData.axes.y.name, 
-              description: sampleData.axes.y.description, 
-              positiveName: sampleData.axes.y.positive, 
-              negativeName: sampleData.axes.y.negative 
-            },
-          ],
-        }));
-      }
-    }
-  }, [router.isReady, router.query]);
-
   // テーマから結果タイプを生成する関数
-  const generateResultTypeFromTheme = (theme: string, fallback: string) => {
+  const generateResultTypeFromTheme = useCallback((theme: string, fallback: string) => {
     const themeKeywords = theme.toLowerCase();
     
     // サッカー関連
@@ -128,19 +96,19 @@ function CreateWizard() {
     if (themeKeywords.includes('野球')) return "野球選手";
     if (themeKeywords.includes('バスケ')) return "バスケ選手";
     if (themeKeywords.includes('テニス')) return "テニス選手";
-    if (themeKeywords.includes('スポーツ')) return "アスリート";
+    if (themeKeywords.includes('格闘技') || themeKeywords.includes('武道')) return "格闘家";
     
-    // ビジネス関連
-    if (themeKeywords.includes('営業')) return "営業職";
-    if (themeKeywords.includes('エンジニア') || themeKeywords.includes('開発')) return "エンジニア";
-    if (themeKeywords.includes('マネージャー') || themeKeywords.includes('管理')) return "マネージャー";
-    if (themeKeywords.includes('起業') || themeKeywords.includes('経営')) return "経営者";
+    // 職業関連
+    if (themeKeywords.includes('職業') || themeKeywords.includes('仕事')) return "職業・職種";
+    if (themeKeywords.includes('医師') || themeKeywords.includes('医療')) return "医療従事者";
+    if (themeKeywords.includes('教師') || themeKeywords.includes('先生')) return "教育者";
+    if (themeKeywords.includes('エンジニア') || themeKeywords.includes('プログラマー')) return "技術者";
     
     // エンターテイメント関連
-    if (themeKeywords.includes('アニメ') || themeKeywords.includes('漫画')) return "アニメキャラクター";
-    if (themeKeywords.includes('映画')) return "映画キャラクター";
-    if (themeKeywords.includes('ゲーム')) return "ゲームキャラクター";
-    if (themeKeywords.includes('音楽') || themeKeywords.includes('アーティスト')) return "ミュージシャン";
+    if (themeKeywords.includes('アニメ') || themeKeywords.includes('漫画')) return "アニメ・漫画キャラ";
+    if (themeKeywords.includes('映画') || themeKeywords.includes('俳優')) return "映画キャラ・俳優";
+    if (themeKeywords.includes('音楽') || themeKeywords.includes('歌手')) return "ミュージシャン・歌手";
+    if (themeKeywords.includes('ゲーム')) return "ゲームキャラ";
     
     // 動物関連
     if (themeKeywords.includes('動物') || themeKeywords.includes('ペット')) return "動物";
@@ -148,24 +116,19 @@ function CreateWizard() {
     if (themeKeywords.includes('猫')) return "猫の種類";
     
     // 食べ物関連
-    if (themeKeywords.includes('料理') || themeKeywords.includes('食べ物')) return "料理・食べ物";
-    if (themeKeywords.includes('ラーメン')) return "ラーメン";
-    if (themeKeywords.includes('カフェ') || themeKeywords.includes('コーヒー')) return "カフェメニュー";
-    
-    // 旅行・場所関連
-    if (themeKeywords.includes('旅行') || themeKeywords.includes('観光')) return "旅行先・観光地";
-    if (themeKeywords.includes('国')) return "国・地域";
-    if (themeKeywords.includes('都市') || themeKeywords.includes('街')) return "都市・街";
+    if (themeKeywords.includes('料理') || themeKeywords.includes('グルメ')) return "料理・グルメ";
+    if (themeKeywords.includes('お菓子') || themeKeywords.includes('スイーツ')) return "お菓子・スイーツ";
+    if (themeKeywords.includes('飲み物') || themeKeywords.includes('ドリンク')) return "飲み物・ドリンク";
     
     // 色・デザイン関連
     if (themeKeywords.includes('色') || themeKeywords.includes('カラー')) return "色・カラー";
     if (themeKeywords.includes('ファッション')) return "ファッションスタイル";
     
     return fallback;
-  };
+  }, []);
 
   // テーマに基づいてサンプルデータを生成する関数
-  const generateSampleData = (theme: string) => {
+  const generateSampleData = useCallback((theme: string) => {
     // キーワードベースでサンプルデータを生成
     const themeKeywords = theme.toLowerCase();
     
@@ -261,7 +224,42 @@ function CreateWizard() {
         }
       };
     }
-  };
+  }, [generateResultTypeFromTheme]);
+
+  // URLパラメータからテーマと問題数を取得
+  React.useEffect(() => {
+    if (router.isReady) {
+      const { theme, questionCount } = router.query;
+      if (theme && typeof theme === "string") {
+        // テーマに基づいてサンプルデータを生成
+        const sampleData = generateSampleData(theme);
+        
+        setWizardData(prev => ({
+          ...prev,
+          theme: theme,
+          questionCount: questionCount ? parseInt(questionCount as string) : 10,
+          resultType: sampleData.resultType,
+          axes: [
+            { 
+              id: 1, 
+              name: sampleData.axes.x.name, 
+              description: sampleData.axes.x.description, 
+              positiveName: sampleData.axes.x.positive, 
+              negativeName: sampleData.axes.x.negative 
+            },
+            { 
+              id: 2, 
+              name: sampleData.axes.y.name, 
+              description: sampleData.axes.y.description, 
+              positiveName: sampleData.axes.y.positive, 
+              negativeName: sampleData.axes.y.negative 
+            },
+          ],
+        }));
+      }
+    }
+  }, [router.isReady, router.query, generateSampleData]);
+
 
   // ステップ1: 4つの指標設定画面
   const generateAxes = async () => {
@@ -305,7 +303,7 @@ function CreateWizard() {
     }
   };
 
-  const handleAxisChange = (axisId: number, field: string, value: string) => {
+  const _handleAxisChange = (axisId: number, field: string, value: string) => {
     setWizardData(prev => ({
       ...prev,
       axes: prev.axes.map(axis => 
@@ -356,7 +354,7 @@ function CreateWizard() {
           enableLocationTracking: false,
           enableRating: false,
           creatorId: user?.id || "temp_user_001",
-          creatorName: user?.username || user?.profile?.displayName || "テストユーザー",
+          creatorName: profile?.username || "テストユーザー",
           // ウィザードで作成されたことを示すフラグ
           isWizardCreated: true,
           resultType: wizardData.resultType,
@@ -398,7 +396,7 @@ function CreateWizard() {
   };
 
   // テーマと結果タイプに基づいて16個のサンプル結果を生成する関数
-  const generateSampleResults = (theme: string, resultType: string): Result[] => {
+  const generateSampleResults = (theme: string, _resultType: string): Result[] => {
     const themeKeywords = theme.toLowerCase();
     
     // 16箇所の座標を生成（4x4グリッド）

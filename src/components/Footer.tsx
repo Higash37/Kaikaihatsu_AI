@@ -5,12 +5,12 @@ import React from "react";
 import { useAuth } from "../contexts/SupabaseAuthContext";
 
 const Footer: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const router = useRouter();
 
   const handleAuthAction = () => {
     if (user) {
-      logout();
+      signOut();
     } else {
       router.push("/auth");
     }
@@ -42,9 +42,9 @@ const Footer: React.FC = () => {
           </Typography>
 
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            {user && (
+            {user && profile && (
               <Typography variant="body2">
-                {user.username}としてログイン中
+                {profile.username}としてログイン中
               </Typography>
             )}
             <Button

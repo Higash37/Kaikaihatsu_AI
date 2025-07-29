@@ -11,7 +11,7 @@ interface TabBarFooterProps {
 
 const TabBarFooter: React.FC<TabBarFooterProps> = ({ show = true }) => {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user: _user } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
   const [clickedTab, setClickedTab] = useState<number | null>(null);
 
@@ -47,7 +47,7 @@ const TabBarFooter: React.FC<TabBarFooterProps> = ({ show = true }) => {
       default:
         setActiveTab(-1); // その他のページでは何も選択しない
     }
-  }, [router.pathname]);
+  }, [router.pathname, clickedTab]);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setClickedTab(newValue); // クリックされたタブを記録

@@ -40,7 +40,7 @@ const adjectives = [
 /**
  * 一意のランダム名前を生成
  */
-const generateRandomName = (seed?: string): string => {
+const _generateRandomName = (seed?: string): string => {
   // シードがある場合は決定的に生成（同じシードなら同じ名前）
   let hash = 0;
   if (seed) {
@@ -64,7 +64,7 @@ const generateRandomName = (seed?: string): string => {
  * ユーザー名を安全に表示するためのヘルパー関数
  * 常にデフォルトユーザー名を返す（認証システム簡略化のため）
  */
-export const getSafeDisplayName = (name: string | null | undefined): string => {
+export const getSafeDisplayName = (_name: string | null | undefined): string => {
   // 常にデフォルトユーザー名を返す
   return "デフォルトユーザー";
 };

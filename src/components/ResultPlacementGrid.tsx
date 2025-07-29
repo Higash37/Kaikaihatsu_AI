@@ -1,5 +1,5 @@
+import { Add, Delete, GridOff } from "@mui/icons-material";
 import { Box, Typography, Paper, Chip, IconButton, TextField, Button, Dialog, DialogTitle, DialogContent, DialogActions, ToggleButton, ToggleButtonGroup } from "@mui/material";
-import { Add, Edit, Delete, GridOn, GridOff } from "@mui/icons-material";
 import React, { useState } from "react";
 
 interface Result {
@@ -76,7 +76,7 @@ const ResultPlacementGrid: React.FC<ResultPlacementGridProps> = ({
           { x: 0.5, y: -0.25 },  // 右下の上
           { x: 0.5, y: -0.75 }   // 右下の下
         ];
-      case "template-16":
+      case "template-16": {
         const positions: { x: number; y: number }[] = [];
         for (let i = 0; i < 4; i++) {
           for (let j = 0; j < 4; j++) {
@@ -87,6 +87,7 @@ const ResultPlacementGrid: React.FC<ResultPlacementGridProps> = ({
           }
         }
         return positions;
+      }
       default:
         return [];
     }
@@ -153,7 +154,7 @@ const ResultPlacementGrid: React.FC<ResultPlacementGridProps> = ({
       let bestSlot = null;
       let minDistance = Infinity;
       
-      templatePositions.forEach((pos, index) => {
+      templatePositions.forEach((pos, _index) => {
         const isOccupied = results.some(r => 
           r.id !== result.id && Math.abs(r.x - pos.x) < 0.15 && Math.abs(r.y - pos.y) < 0.15
         );
@@ -183,7 +184,7 @@ const ResultPlacementGrid: React.FC<ResultPlacementGridProps> = ({
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
       
-      const coords = convertFromPixels(x - RESULT_SIZE / 2, y - RESULT_SIZE / 2);
+      const coords = convertFromPixels(x - RESULT_SIZE.width / 2, y - RESULT_SIZE.height / 2);
       setClickPosition({
         x: Math.max(-1, Math.min(1, coords.x)),
         y: Math.max(-1, Math.min(1, coords.y))

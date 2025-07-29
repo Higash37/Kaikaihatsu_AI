@@ -2,15 +2,12 @@ import {
   GetApp,
   TableChart,
   Code,
-  PictureAsPdf,
   CloudDownload,
   FilterList,
-  Sort,
   History,
   Delete,
   Preview,
   ExpandMore,
-  Tune,
 } from '@mui/icons-material';
 import {
   Dialog,
@@ -25,32 +22,24 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  TextField,
   Checkbox,
   FormControlLabel,
   FormGroup,
   Alert,
   LinearProgress,
-  Chip,
   Card,
   CardContent,
   List,
   ListItem,
   ListItemText,
   ListItemIcon,
-  IconButton,
-  Tooltip,
   Accordion,
   AccordionSummary,
   AccordionDetails,
   Slider,
   Switch,
 } from '@mui/material';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { ja } from 'date-fns/locale';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 import {
   exportToCSV,
@@ -62,7 +51,6 @@ import {
   transformResponseData,
   transformStatisticsData,
   ExportHistory,
-  applyFilters,
   transformData,
 } from '@/utils/dataExport';
 import {
@@ -126,52 +114,44 @@ const DataExporter: React.FC<DataExporterProps> = ({
   const [exportHistory, setExportHistory] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (open) {
-      loadExportHistory();
-      updateAvailableFields();
-    }
-  }, [open, config.dataType]);
-
-  const loadExportHistory = () => {
-    setExportHistory(ExportHistory.getHistory());
-  };
-
-  const updateAvailableFields = () => {
+  const updateAvailableFields = useCallback(() => {
     switch (config.dataType) {
       case 'quizzes': {
         setAvailableFields([
           'ID', 'タイトル', '説明', '作成者', '作成日', '質問数',
           '公開状態', '総回答数', '完了数', '進行中', '平均評価', 'カテゴリ', 'タグ'
         ]);
-        setConfig(prev => ({
-          ...prev,
-          fields: ['ID', 'タイトル', '作成者', '作成日', '質問数', '公開状態', '総回答数', '完了数']
-        }));
         break;
       }
-      case 'responses':
+      case 'responses': {
         setAvailableFields([
-          'ID', 'ユーザーID', 'クイズID', 'スコア', '完了日時',
-          '回答時間', '年齢', '性別', '地域'
+          'ID', 'ユーザーID', 'クイズID', '開始時間', '終了時間',
+          '所要時間', 'スコア', '完了率', '回答詳細', 'デバイス', 'ブラウザ'  
         ]);
-        setConfig(prev => ({
-          ...prev,
-          fields: ['ID', 'ユーザーID', 'クイズID', 'スコア', '完了日時']
-        }));
         break;
-      case 'statistics':
+      }
+      case 'statistics': {
         setAvailableFields([
-          '項目', '値', '単位'
+          '平均スコア', '最高スコア', '最低スコア', '標準偏差',
+          '完了率', '平均所要時間', '参加者数', '質問別正答率'
         ]);
-        setConfig(prev => ({
-          ...prev,
-          fields: ['項目', '値', '単位']
-        }));
         break;
-      default:
+      }
+      default: {
         setAvailableFields([]);
+      }
     }
+  }, [config.dataType]);
+
+  useEffect(() => {
+    if (open) {
+      loadExportHistory();
+      updateAvailableFields();
+    }
+  }, [open, config.dataType, updateAvailableFields]);
+
+  const loadExportHistory = () => {
+    setExportHistory(ExportHistory.getHistory());
   };
 
   const updateConfig = (key: keyof ExportConfig, value: any) => {
@@ -209,6 +189,7 @@ const DataExporter: React.FC<DataExporterProps> = ({
           const quizzes = userId ? await getQuizzes(userId) : [];
           rawData = transformQuizData(quizzes);
           break;
+        }
         case 'responses':
           if (quizId) {
             const responses = await getQuizResponses(quizId);
@@ -269,6 +250,7 @@ const DataExporter: React.FC<DataExporterProps> = ({
           const quizzes = userId ? await getQuizzes(userId) : [];
           exportData = transformQuizData(quizzes);
           break;
+        }
         case 'responses':
           if (quizId) {
             const responses = await getQuizResponses(quizId);
@@ -571,7 +553,6 @@ const DataExporter: React.FC<DataExporterProps> = ({
                           min={0}
                           max={100}
                           valueLabelDisplay="auto"
-                          range
                         />
                       </Grid>
                     </>

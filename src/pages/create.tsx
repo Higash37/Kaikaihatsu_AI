@@ -18,7 +18,7 @@ import {
 import { useTheme } from "@mui/material/styles";
 import { motion } from "framer-motion";
 import { useRouter } from "next/router";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 
 import { useAuth } from "../contexts/SupabaseAuthContext";
 
@@ -86,11 +86,13 @@ function Create() {
 
     if (mode === "wizard") {
       // ウィザード画面に遷移（テーマを引き継ぎ）
-      const params = new URLSearchParams({
-        theme: theme,
-        questionCount: questionCount.toString(),
+      router.push({
+        pathname: '/create-wizard',
+        query: {
+          theme: theme,
+          questionCount: questionCount.toString(),
+        }
       });
-      router.push(`/create-wizard?${params.toString()}`);
       return;
     }
 

@@ -10,7 +10,6 @@ import {
   Badge,
   IconButton,
   Menu,
-  MenuItem,
   Typography,
   List,
   ListItem,
@@ -22,7 +21,7 @@ import {
   Chip,
   Divider,
 } from '@mui/material';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { createClient } from '@/lib/supabase/client';
@@ -49,6 +48,18 @@ const NotificationCenter: React.FC = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const supabase = createClient();
+
+  const loadNotifications = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const notifs = await getNotifications(user.id);
+      setNotifications(notifs);
+      setUnreadCount(notifs.filter(n => !n.read).length);
+    } catch (error) {
+      console.error('通知の取得に失敗しました:', error);
+    }
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -99,19 +110,7 @@ const NotificationCenter: React.FC = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, supabase]);
-
-  const loadNotifications = async () => {
-    if (!user) return;
-
-    try {
-      const notifs = await getNotifications(user.id);
-      setNotifications(notifs);
-      setUnreadCount(notifs.filter(n => !n.read).length);
-    } catch (error) {
-      console.error('通知の取得に失敗:', error);
-    }
-  };
+  }, [user, supabase, loadNotifications]);
 
   const handleOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);

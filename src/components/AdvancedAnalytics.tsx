@@ -27,7 +27,7 @@ import {
   Alert,
   Chip,
 } from '@mui/material';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   LineChart,
   Line,
@@ -38,7 +38,7 @@ import {
   PieChart,
   Pie,
   Cell,
-  ScatterPlot,
+  ScatterChart,
   Scatter,
   RadarChart,
   PolarGrid,
@@ -92,11 +92,7 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ quizId, title }) 
   const [rawData, setRawData] = useState<ResponseData[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadAnalyticsData();
-  }, [quizId, timeRange, loadAnalyticsData]);
-
-  const loadAnalyticsData = async () => {
+  const loadAnalyticsData = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -142,7 +138,11 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ quizId, title }) 
     } finally {
       setLoading(false);
     }
-  };
+  }, [quizId, timeRange]);
+
+  useEffect(() => {
+    loadAnalyticsData();
+  }, [quizId, timeRange, loadAnalyticsData]);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -484,7 +484,7 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ quizId, title }) 
               回答時間 vs スコア
             </Typography>
             <ResponsiveContainer width="100%" height={400}>
-              <ScatterPlot>
+              <ScatterChart>
                 <CartesianGrid />
                 <XAxis type="number" dataKey="x" name="回答時間(分)" />
                 <YAxis type="number" dataKey="y" name="スコア" />
@@ -497,7 +497,7 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({ quizId, title }) 
                   }))}
                   fill="#8884d8"
                 />
-              </ScatterPlot>
+              </ScatterChart>
             </ResponsiveContainer>
           </Box>
         </TabPanel>

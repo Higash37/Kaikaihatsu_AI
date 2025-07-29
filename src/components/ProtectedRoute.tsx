@@ -1,8 +1,4 @@
-import { Box, CircularProgress, Typography } from "@mui/material";
-import { useRouter } from "next/router";
-import React, { useEffect } from "react";
-
-import { useAuth } from "../contexts/SupabaseAuthContext";
+import React from "react";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;

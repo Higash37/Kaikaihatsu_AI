@@ -1,3 +1,4 @@
+import { AutoAwesome, Settings } from "@mui/icons-material";
 import {
   Dialog,
   DialogTitle,
@@ -9,7 +10,6 @@ import {
   CardContent,
   Chip,
 } from "@mui/material";
-import { AutoAwesome, Settings } from "@mui/icons-material";
 import React from "react";
 
 interface CreateModeModalProps {

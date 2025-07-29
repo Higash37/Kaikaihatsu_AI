@@ -1,16 +1,13 @@
 import {
   Analytics,
   Dashboard,
-  Assessment,
   Slideshow,
   GetApp,
   Description,
-  Notifications,
   Menu as MenuIcon,
   Home,
   ArrowBack,
   Share,
-  Favorite,
   TrendingUp,
   PieChart,
   Timeline,
@@ -23,7 +20,6 @@ import {
   Tabs,
   Tab,
   Paper,
-  Fab,
   SpeedDial,
   SpeedDialAction,
   SpeedDialIcon,
@@ -53,8 +49,8 @@ import ExportPresentation from '@/components/ExportPresentation';
 import NotificationCenter from '@/components/NotificationCenter';
 import ReportGenerator from '@/components/ReportGenerator';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
-import { getSafeDisplayName } from '@/utils/userDisplay';
 import { getQuiz } from '@/utils/supabase';
+import { getSafeDisplayName } from '@/utils/userDisplay';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -96,7 +92,7 @@ const AdvancedAnalyticsPage: NextPage = () => {
     if (quizId && typeof quizId === 'string') {
       loadQuizData(quizId);
     }
-  }, [user, quizId]);
+  }, [user, quizId, router]);
 
   useEffect(() => {
     // チャート要素を収集（エクスポート用）

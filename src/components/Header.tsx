@@ -26,6 +26,7 @@ import { useRouter } from "next/router";
 import React, { useState } from "react";
 
 import { useAuth } from "../contexts/SupabaseAuthContext";
+
 import { getUserInitials, getSafeDisplayName } from "@/utils/userDisplay";
 
 const Header = () => {

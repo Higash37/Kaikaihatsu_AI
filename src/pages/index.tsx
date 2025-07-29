@@ -1,4 +1,4 @@
-import { Search, TrendingUp, Schedule, Person } from "@mui/icons-material";
+import { Search, TrendingUp, Schedule } from "@mui/icons-material";
 import {
   Box,
   Typography,
@@ -6,7 +6,6 @@ import {
   CardContent,
   Chip,
   Grid,
-  Avatar,
   InputAdornment,
   TextField,
   ToggleButton,

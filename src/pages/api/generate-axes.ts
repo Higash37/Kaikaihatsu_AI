@@ -35,7 +35,7 @@ export default async function handler(
     return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
   }
 
-  const { theme, resultType, questionCount = 10 } = req.body;
+  const { theme, resultType, questionCount: _questionCount = 10 } = req.body;
 
   if (!theme || typeof theme !== "string") {
     return res.status(400).json({ error: "テーマを正しく指定してください。" });
