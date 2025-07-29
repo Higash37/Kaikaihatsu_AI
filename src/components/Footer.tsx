@@ -2,7 +2,7 @@ import { Box, Container, Typography, Button } from "@mui/material";
 import { useRouter } from "next/router";
 import React from "react";
 
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/SupabaseAuthContext";
 
 const Footer: React.FC = () => {
   const { user, logout } = useAuth();
@@ -38,7 +38,7 @@ const Footer: React.FC = () => {
           }}
         >
           <Typography variant="h6" component="div">
-            LoveNavi
+            SciscitorAI
           </Typography>
 
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
@@ -65,7 +65,7 @@ const Footer: React.FC = () => {
         </Box>
 
         <Typography variant="body2" sx={{ mt: 2, textAlign: "center" }}>
-          © 2024 LoveNavi. All rights reserved.
+          © 2024 SciscitorAI. All rights reserved.
         </Typography>
       </Container>
     </Box>

@@ -1,8 +1,7 @@
-import { collection, query, where, getDocs } from "firebase/firestore";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { Quiz } from "@/types/quiz";
-import { db } from "@/utils/firebase";
+import { getQuizzes } from "@/utils/supabase";
 
 export default async function handler(
   req: NextApiRequest,
@@ -26,33 +25,43 @@ export default async function handler(
     console.log("[user-quizzes] Fetching quizzes for userId:", userId);
 
     // ユーザーが作成したクイズを取得
-    console.log("[user-quizzes] Executing Firestore query");
-    const quizzesQuery = query(
-      collection(db, "quizzes"),
-      where("creatorId", "==", userId)
-    );
-
-    const quizzesSnapshot = await getDocs(quizzesQuery);
+    console.log("[user-quizzes] Executing Supabase query");
+    const supabaseQuizzes = await getQuizzes(userId);
     console.log(
-      "[user-quizzes] Query completed, document count:",
-      quizzesSnapshot.size
+      "[user-quizzes] Query completed, quiz count:",
+      supabaseQuizzes.length
     );
 
-    const quizzes = quizzesSnapshot.docs.map((doc) => {
-      const data = doc.data();
+    // Supabaseのデータ構造をフロントエンド用に変換
+    const quizzes = supabaseQuizzes.map((quiz: any) => {
       console.log(
         "[user-quizzes] Processing quiz:",
-        doc.id,
+        quiz.id,
         "title:",
-        data.title
+        quiz.title
       );
       return {
-        id: doc.id,
-        ...data,
+        id: quiz.id,
+        title: quiz.title,
+        description: quiz.description,
+        creatorId: quiz.user_id,
+        creatorName: 'You', // ユーザー自身の作成なので
+        createdAt: quiz.created_at,
+        updatedAt: quiz.updated_at,
+        questionCount: quiz.questions?.questions?.length || 0,
+        isPublic: quiz.is_public,
+        tags: quiz.questions?.tags || [],
+        totalResponses: 0, // TODO: 統計から取得
+        popularity: 0, // TODO: 統計から計算
+        averageRating: 0, // TODO: 統計から計算
+        questions: quiz.questions?.questions || [],
+        enableDemographics: quiz.questions?.enableDemographics || false,
+        enableLocationTracking: quiz.questions?.enableLocationTracking || false,
+        enableRating: quiz.questions?.enableRating || true,
       };
     }) as Quiz[];
 
-    // Sort by createdAt in descending order on the client side
+    // Sort by createdAt in descending order
     quizzes.sort((a, b) => {
       const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;

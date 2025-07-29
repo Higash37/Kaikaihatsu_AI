@@ -28,10 +28,11 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/router";
 import React, { useState, useEffect } from "react";
 
+import { useAuth } from "../contexts/SupabaseAuthContext";
+
 import Header from "@/components/Header";
 import Layout from "@/components/Layout";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { useAuth } from "@/contexts/AuthContext";
 import { Quiz } from "@/types/quiz";
 
 // クイズ型定義を更新
@@ -280,7 +281,7 @@ function History() {
                             {quiz.questionCount}問
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
-                            {quiz.popularity}回実施
+                            {quiz.totalResponses || 0}回実施
                           </Typography>
                         </Box>
 
@@ -359,7 +360,22 @@ function History() {
                   <Button
                     variant="contained"
                     onClick={() => router.push("/create")}
-                    sx={{ mt: 2 }}
+                    sx={{ 
+                      mt: 2,
+                      backgroundColor: "#667eea !important",
+                      color: "#ffffff !important",
+                      borderRadius: 3,
+                      px: 3,
+                      py: 1,
+                      fontWeight: 600,
+                      boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+                      "&:hover": {
+                        backgroundColor: "#5a67d8 !important",
+                        boxShadow: '0 6px 16px rgba(102, 126, 234, 0.4)',
+                        transform: 'translateY(-1px)',
+                      },
+                      transition: 'all 0.2s ease-in-out',
+                    }}
                   >
                     アンケートを作成する
                   </Button>

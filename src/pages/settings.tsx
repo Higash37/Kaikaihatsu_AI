@@ -1,4 +1,21 @@
-import { Person, Security, Notifications, Delete } from "@mui/icons-material";
+import { 
+  Person, 
+  Security, 
+  Notifications, 
+  Delete,
+  ChevronRight,
+  AccountCircle,
+  Language,
+  Palette,
+  Storage,
+  Info,
+  Lock,
+  Email,
+  Share,
+  CloudUpload,
+  Download,
+  Warning
+} from "@mui/icons-material";
 import {
   Container,
   Typography,
@@ -17,49 +34,132 @@ import {
   ListItem,
   ListItemText,
   ListItemSecondaryAction,
-  Tabs,
-  Tab,
+  ListItemIcon,
+  Divider,
+  ListItemButton,
+  useTheme,
+  Paper,
 } from "@mui/material";
 import React, { useState } from "react";
 
 import Layout from "../components/Layout";
 import ProtectedRoute from "../components/ProtectedRoute";
 import UserProfileForm from "../components/UserProfileForm";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/SupabaseAuthContext";
 
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
+// カスタムListItemコンポーネント
+interface SettingsListItemProps {
+  icon?: React.ReactNode;
+  primary: string;
+  secondary?: string;
+  onClick?: () => void;
+  action?: React.ReactNode;
+  showChevron?: boolean;
 }
 
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-
+const SettingsListItem: React.FC<SettingsListItemProps> = ({
+  icon,
+  primary,
+  secondary,
+  onClick,
+  action,
+  showChevron = false,
+}) => {
+  const theme = useTheme();
+  
   return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`settings-tabpanel-${index}`}
-      aria-labelledby={`settings-tab-${index}`}
-      {...other}
+    <ListItemButton 
+      onClick={onClick}
+      sx={{ 
+        py: 1.5,
+        '&:hover': {
+          backgroundColor: theme.palette.action.hover,
+        }
+      }}
     >
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
-    </div>
+      {icon && (
+        <ListItemIcon sx={{ minWidth: 40 }}>
+          {icon}
+        </ListItemIcon>
+      )}
+      <ListItemText 
+        primary={primary} 
+        secondary={secondary}
+        primaryTypographyProps={{
+          fontSize: '1rem',
+          fontWeight: 400,
+        }}
+        secondaryTypographyProps={{
+          fontSize: '0.875rem',
+          color: 'text.secondary'
+        }}
+      />
+      {action && (
+        <ListItemSecondaryAction>
+          {action}
+        </ListItemSecondaryAction>
+      )}
+      {showChevron && (
+        <ChevronRight sx={{ color: theme.palette.text.secondary }} />
+      )}
+    </ListItemButton>
   );
+};
+
+// セクションコンポーネント
+interface SettingsSectionProps {
+  title?: string;
+  children: React.ReactNode;
 }
+
+const SettingsSection: React.FC<SettingsSectionProps> = ({ title, children }) => {
+  const theme = useTheme();
+  
+  return (
+    <Box sx={{ mb: 3 }}>
+      {title && (
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            px: 2, 
+            py: 1, 
+            color: theme.palette.text.secondary,
+            fontWeight: 500,
+            textTransform: 'uppercase',
+            fontSize: '0.75rem'
+          }}
+        >
+          {title}
+        </Typography>
+      )}
+      <Paper 
+        elevation={0} 
+        sx={{ 
+          backgroundColor: theme.palette.background.paper,
+          borderRadius: 2,
+          overflow: 'hidden',
+          border: `1px solid ${theme.palette.divider}`,
+        }}
+      >
+        <List sx={{ py: 0 }}>
+          {children}
+        </List>
+      </Paper>
+    </Box>
+  );
+};
 
 const SettingsPage: React.FC = () => {
   const { user } = useAuth();
+  const theme = useTheme();
   const [notifications, setNotifications] = useState(true);
   const [autoSave, setAutoSave] = useState(true);
+  const [emailNotifications, setEmailNotifications] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+  const [shareData, setShareData] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
-  const [currentTab, setCurrentTab] = useState(0);
-
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setCurrentTab(newValue);
-  };
+  const [activeSection, setActiveSection] = useState<string | null>(null);
 
   const handleSaveSettings = () => {
     // TODO: 設定保存のAPI呼び出し
@@ -73,6 +173,11 @@ const SettingsPage: React.FC = () => {
     // ログアウト処理等
   };
 
+  const handleSectionClick = (section: string) => {
+    setActiveSection(section);
+    // ここで各セクションの詳細画面へ遷移する処理を追加
+  };
+
   return (
     <Layout>
       <ProtectedRoute>
@@ -82,157 +187,169 @@ const SettingsPage: React.FC = () => {
             maxWidth: "100vw",
             overflowX: "hidden",
             minHeight: "100vh",
-            userSelect: "none",
-            WebkitUserSelect: "none",
-            MozUserSelect: "none",
-            msUserSelect: "none",
-            paddingBottom: "80px", // フッターの高さ分のパディング
+            backgroundColor: theme.palette.mode === 'dark' ? '#000' : '#f5f5f7',
+            paddingBottom: "80px",
           }}
         >
-          <Container maxWidth="md" sx={{ py: 4, mt: 8 }}>
-            <Typography variant="h3" component="h1" gutterBottom align="center">
+          <Container maxWidth="sm" sx={{ py: 2, mt: 8 }}>
+            <Typography 
+              variant="h4" 
+              component="h1" 
+              sx={{ 
+                fontWeight: 700,
+                mb: 3,
+                px: 2
+              }}
+            >
               設定
             </Typography>
 
-            <Typography
-              variant="h6"
-              color="text.secondary"
-              align="center"
-              sx={{ mb: 4 }}
-            >
-              アカウント設定とプロフィール管理
-            </Typography>
+            {/* プロフィールセクション */}
+            <SettingsSection>
+              <SettingsListItem
+                icon={<AccountCircle sx={{ color: theme.palette.primary.main }} />}
+                primary={user?.username || "ユーザー"}
+                secondary="プロフィールを編集"
+                onClick={() => handleSectionClick('profile')}
+                showChevron
+              />
+            </SettingsSection>
 
-            {/* タブナビゲーション */}
-            <Card sx={{ mb: 3 }}>
-              <Tabs
-                value={currentTab}
-                onChange={handleTabChange}
-                aria-label="settings tabs"
-                centered
-              >
-                <Tab label="プロフィール" />
-                <Tab label="アプリ設定" />
-                <Tab label="プライバシー" />
-                <Tab label="アカウント" />
-              </Tabs>
-            </Card>
-
-            {/* タブコンテンツ */}
-            <TabPanel value={currentTab} index={0}>
-              <UserProfileForm />
-            </TabPanel>
-
-            <TabPanel value={currentTab} index={1}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    <Notifications sx={{ mr: 1, verticalAlign: "middle" }} />
-                    アプリケーション設定
-                  </Typography>
-
-                  <List>
-                    <ListItem>
-                      <ListItemText
-                        primary="通知を有効にする"
-                        secondary="新しいコメントやアップデートの通知を受け取る"
-                      />
-                      <ListItemSecondaryAction>
-                        <Switch
-                          checked={notifications}
-                          onChange={(e) => setNotifications(e.target.checked)}
-                        />
-                      </ListItemSecondaryAction>
-                    </ListItem>
-
-                    <ListItem>
-                      <ListItemText
-                        primary="自動保存"
-                        secondary="作業内容を自動的に保存する"
-                      />
-                      <ListItemSecondaryAction>
-                        <Switch
-                          checked={autoSave}
-                          onChange={(e) => setAutoSave(e.target.checked)}
-                        />
-                      </ListItemSecondaryAction>
-                    </ListItem>
-                  </List>
-
-                  <Button
-                    variant="contained"
-                    onClick={handleSaveSettings}
-                    sx={{ mt: 2 }}
-                  >
-                    設定を保存
-                  </Button>
-                </CardContent>
-              </Card>
-            </TabPanel>
-
-            <TabPanel value={currentTab} index={2}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    <Security sx={{ mr: 1, verticalAlign: "middle" }} />
-                    プライバシー設定
-                  </Typography>
-
-                  <Typography variant="body1" paragraph>
-                    プライバシー設定は「プロフィール」タブで管理できます。
-                  </Typography>
-
-                  <Typography variant="body2" color="text.secondary">
-                    • データ収集の許可/拒否
-                    <br />
-                    • 位置情報の利用設定
-                    <br />• プロフィールデータの共有設定
-                  </Typography>
-                </CardContent>
-              </Card>
-            </TabPanel>
-
-            <TabPanel value={currentTab} index={3}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    <Person sx={{ mr: 1, verticalAlign: "middle" }} />
-                    アカウント情報
-                  </Typography>
-
-                  <TextField
-                    label="ユーザー名"
-                    value={user?.username || ""}
-                    disabled
-                    fullWidth
-                    margin="normal"
+            {/* 一般設定セクション */}
+            <SettingsSection title="一般">
+              <SettingsListItem
+                icon={<Notifications sx={{ color: '#ff9500' }} />}
+                primary="通知"
+                secondary={notifications ? "オン" : "オフ"}
+                action={
+                  <Switch
+                    checked={notifications}
+                    onChange={(e) => setNotifications(e.target.checked)}
+                    onClick={(e) => e.stopPropagation()}
                   />
-
-                  <TextField
-                    label="ユーザーID"
-                    value={user?.id || ""}
-                    disabled
-                    fullWidth
-                    margin="normal"
+                }
+              />
+              <Divider />
+              <SettingsListItem
+                icon={<Email sx={{ color: '#007aff' }} />}
+                primary="メール通知"
+                secondary={emailNotifications ? "オン" : "オフ"}
+                action={
+                  <Switch
+                    checked={emailNotifications}
+                    onChange={(e) => setEmailNotifications(e.target.checked)}
+                    onClick={(e) => e.stopPropagation()}
                   />
+                }
+              />
+              <Divider />
+              <SettingsListItem
+                icon={<CloudUpload sx={{ color: '#34c759' }} />}
+                primary="自動保存"
+                secondary={autoSave ? "オン" : "オフ"}
+                action={
+                  <Switch
+                    checked={autoSave}
+                    onChange={(e) => setAutoSave(e.target.checked)}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                }
+              />
+            </SettingsSection>
 
-                  <Box sx={{ mt: 4 }}>
-                    <Typography variant="h6" gutterBottom color="error">
-                      危険な操作
-                    </Typography>
+            {/* 表示とサウンドセクション */}
+            <SettingsSection title="表示とサウンド">
+              <SettingsListItem
+                icon={<Palette sx={{ color: '#5856d6' }} />}
+                primary="ダークモード"
+                secondary={darkMode ? "オン" : "オフ"}
+                action={
+                  <Switch
+                    checked={darkMode}
+                    onChange={(e) => setDarkMode(e.target.checked)}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                }
+              />
+              <Divider />
+              <SettingsListItem
+                icon={<Language sx={{ color: '#ff3b30' }} />}
+                primary="言語"
+                secondary="日本語"
+                onClick={() => handleSectionClick('language')}
+                showChevron
+              />
+            </SettingsSection>
 
-                    <Button
-                      variant="outlined"
-                      color="error"
-                      onClick={() => setDeleteDialogOpen(true)}
-                      startIcon={<Delete />}
-                    >
-                      アカウントを削除
-                    </Button>
-                  </Box>
-                </CardContent>
-              </Card>
-            </TabPanel>
+            {/* プライバシーセクション */}
+            <SettingsSection title="プライバシー">
+              <SettingsListItem
+                icon={<Lock sx={{ color: '#ff3b30' }} />}
+                primary="プライバシー設定"
+                secondary="データの収集と使用"
+                onClick={() => handleSectionClick('privacy')}
+                showChevron
+              />
+              <Divider />
+              <SettingsListItem
+                icon={<Share sx={{ color: '#007aff' }} />}
+                primary="データ共有"
+                secondary={shareData ? "許可" : "拒否"}
+                action={
+                  <Switch
+                    checked={shareData}
+                    onChange={(e) => setShareData(e.target.checked)}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                }
+              />
+            </SettingsSection>
+
+            {/* データ管理セクション */}
+            <SettingsSection title="データ管理">
+              <SettingsListItem
+                icon={<Storage sx={{ color: '#5856d6' }} />}
+                primary="ストレージ"
+                secondary="キャッシュとデータを管理"
+                onClick={() => handleSectionClick('storage')}
+                showChevron
+              />
+              <Divider />
+              <SettingsListItem
+                icon={<Download sx={{ color: '#34c759' }} />}
+                primary="データをエクスポート"
+                secondary="すべてのデータをダウンロード"
+                onClick={() => handleSectionClick('export')}
+                showChevron
+              />
+            </SettingsSection>
+
+            {/* サポートセクション */}
+            <SettingsSection title="サポート">
+              <SettingsListItem
+                icon={<Info sx={{ color: '#007aff' }} />}
+                primary="バージョン情報"
+                secondary="v1.0.0"
+                onClick={() => handleSectionClick('about')}
+                showChevron
+              />
+              <Divider />
+              <SettingsListItem
+                icon={<Security sx={{ color: '#ff9500' }} />}
+                primary="利用規約"
+                onClick={() => handleSectionClick('terms')}
+                showChevron
+              />
+            </SettingsSection>
+
+            {/* 危険な操作セクション */}
+            <SettingsSection>
+              <SettingsListItem
+                icon={<Warning sx={{ color: '#ff3b30' }} />}
+                primary="アカウントを削除"
+                onClick={() => setDeleteDialogOpen(true)}
+              />
+            </SettingsSection>
 
             {successMessage && (
               <Alert severity="success" sx={{ mb: 3 }}>

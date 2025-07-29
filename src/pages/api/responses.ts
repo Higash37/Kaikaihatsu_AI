@@ -1,15 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import {
-  collection,
-  addDoc,
-  query,
-  where,
-  getDocs,
-  orderBy,
-  limit as firestoreLimit,
-} from "firebase/firestore";
 
-import { db } from "@/utils/firebase";
+import { saveQuizResponse, getQuizResponses } from "@/utils/supabase";
 
 // サンプル回答データ
 const sampleResponses = [
@@ -188,22 +179,19 @@ export default async function handler(
         createdAt: new Date().toISOString(),
       };
 
-      // Firestoreに保存（利用可能な場合）
-      if (db) {
-        try {
-          const docRef = await addDoc(
-            collection(db, "responses"),
-            responseData
-          );
-          console.log("回答が保存されました:", docRef.id);
-          res.status(200).json({ id: docRef.id, ...responseData });
-        } catch (firebaseError) {
-          console.error("Firestore保存エラー:", firebaseError);
-          res.status(500).json({ error: "回答の保存に失敗しました" });
-        }
-      } else {
-        console.log("Firebase not available, response not saved");
-        res.status(200).json({ id: "temp-id", ...responseData });
+      // Supabaseに保存
+      try {
+        const savedId = await saveQuizResponse({
+          userId: null, // 匿名回答の場合
+          quizId,
+          responses: answers,
+          result: null, // 結果は別途計算・保存
+        });
+        console.log("回答が保存されました:", savedId);
+        res.status(200).json({ id: savedId, ...responseData });
+      } catch (supabaseError) {
+        console.error("Supabase保存エラー:", supabaseError);
+        res.status(500).json({ error: "回答の保存に失敗しました" });
       }
     } catch (error) {
       console.error("回答保存エラー:", error);
@@ -221,41 +209,32 @@ export default async function handler(
 
       let responses: any[] = [];
 
-      // Firestoreから回答を取得（利用可能な場合）
-      if (db) {
-        try {
-          const responsesQuery = query(
-            collection(db, "responses"),
-            where("quizId", "==", quizId),
-            orderBy("createdAt", "desc"),
-            firestoreLimit(Number(limit))
-          );
+      // Supabaseから回答を取得
+      try {
+        const supabaseResponses = await getQuizResponses(quizId);
+        console.log("Supabaseから取得した回答数:", supabaseResponses.length);
 
-          const responsesSnapshot = await getDocs(responsesQuery);
-          console.log(
-            "Firestoreから取得した回答数:",
-            responsesSnapshot.docs.length
-          );
-
-          if (responsesSnapshot.docs.length > 0) {
-            responses = responsesSnapshot.docs.map((doc) => ({
-              id: doc.id,
-              ...doc.data(),
-            }));
-          } else {
-            console.log("Firestoreに回答がないため、サンプルデータを使用");
-          }
-        } catch (firestoreError) {
-          console.log(
-            "Firestoreからの取得に失敗、サンプルデータを使用:",
-            firestoreError
-          );
+        if (supabaseResponses.length > 0) {
+          // Supabaseの診断データを既存の回答形式に変換
+          responses = supabaseResponses.slice(0, Number(limit)).map((diagnosis) => ({
+            id: diagnosis.id,
+            quizId: diagnosis.quiz_id,
+            answers: diagnosis.responses || [],
+            demographics: {},
+            location: "",
+            createdAt: diagnosis.created_at,
+          }));
+        } else {
+          console.log("Supabaseに回答がないため、サンプルデータを使用");
         }
-      } else {
-        console.log("Firebase not available, using sample data");
+      } catch (supabaseError) {
+        console.log(
+          "Supabaseからの取得に失敗、サンプルデータを使用:",
+          supabaseError
+        );
       }
 
-      // Firestoreから取得できない場合はサンプルデータから検索
+      // Supabaseから取得できない場合はサンプルデータから検索
       if (responses.length === 0) {
         console.log("サンプルデータから検索中...");
         responses = sampleResponses.filter((r) => r.quizId === quizId);

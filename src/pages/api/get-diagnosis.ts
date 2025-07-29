@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { getAllQuizResults } from "@/utils/firebase";
+
+import { getAllQuizResults } from "@/utils/supabase";
 
 export default async function handler(
   req: NextApiRequest,
@@ -14,7 +15,7 @@ export default async function handler(
 
     // 診断データのみをフィルタリング
     const diagnosisData = results.filter(
-      (result: any) => result.type === "diagnosis"
+      (result: any) => result.result_data?.type === "diagnosis"
     );
 
     res.status(200).json({

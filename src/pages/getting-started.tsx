@@ -36,7 +36,7 @@ import Layout from "../components/Layout";
 const steps = [
   {
     label: "アカウント作成",
-    description: "まずはアカウントを作成してLoveNaviを始めましょう",
+    description: "まずはアカウントを作成してSciscitorAIを始めましょう",
     icon: <AccountCircle />,
     content: [
       "右上の「ログイン」ボタンをクリック",
@@ -123,7 +123,7 @@ const GettingStartedPage: React.FC = () => {
         <Container maxWidth="lg" sx={{ py: 4, mt: 8 }}>
           <Box sx={{ textAlign: "center", mb: 6 }}>
             <Typography variant="h3" component="h1" gutterBottom>
-              LoveNaviをはじめよう
+              SciscitorAIをはじめよう
             </Typography>
             <Typography variant="h6" color="text.secondary" sx={{ mb: 4 }}>
               AIを活用した次世代アンケートシステム

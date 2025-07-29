@@ -1,15 +1,11 @@
-import bcrypt from "bcrypt";
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  doc,
-  setDoc,
-} from "firebase/firestore";
+import { createClient } from '@supabase/supabase-js';
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { db } from "../../../utils/firebase";
+// Supabase クライアント（サーバーサイド用）
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 export default async function handler(
   req: NextApiRequest,
@@ -19,12 +15,12 @@ export default async function handler(
     return res.status(405).json({ message: "Method not allowed" });
   }
 
-  const { username, password, email, role = "creator" } = req.body;
+  const { username, password, email } = req.body;
 
-  if (!username || !password) {
+  if (!username || !password || !email) {
     return res
       .status(400)
-      .json({ message: "Username and password are required" });
+      .json({ message: "Username, email, and password are required" });
   }
 
   if (username.length < 3) {
@@ -41,74 +37,66 @@ export default async function handler(
 
   try {
     // ユーザー名の重複チェック
-    const usersRef = collection(db, "users");
-    const q = query(usersRef, where("username", "==", username));
-    const querySnapshot = await getDocs(q);
+    const { data: existingUser, error: checkError } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('username', username)
+      .single();
 
-    if (!querySnapshot.empty) {
+    if (existingUser) {
       return res.status(409).json({ message: "Username already exists" });
     }
 
-    // メールアドレスの重複チェック（提供されている場合）
-    if (email) {
-      const emailQuery = query(usersRef, where("email", "==", email));
-      const emailSnapshot = await getDocs(emailQuery);
+    // Supabase Authでユーザー作成
+    const { data, error } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        username: username,
+      }
+    });
 
-      if (!emailSnapshot.empty) {
+    if (error) {
+      console.error("Signup error:", error);
+      if (error.message.includes('already registered')) {
         return res.status(409).json({ message: "Email already exists" });
       }
+      return res.status(400).json({ message: error.message });
     }
 
-    // パスワードをハッシュ化
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    if (!data.user) {
+      return res.status(400).json({ message: "User creation failed" });
+    }
 
-    // ユーザーIDを生成
-    const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // プロフィール作成
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .insert([{
+        id: data.user.id,
+        username: username,
+        email: email,
+        bio: '',
+        is_public: false,
+      }]);
 
-    // ユーザーを作成（特定のIDで）
-    const newUser = {
-      username,
-      email: email || null,
-      password: hashedPassword,
-      profile: {
-        displayName: username,
-        bio: "",
-        avatar: null,
-        preferences: {
-          theme: "light",
-          notifications: true,
-          publicProfile: false,
-        },
-      },
-      stats: {
-        quizzesCreated: 0,
-        quizzesTaken: 0,
-        totalScore: 0,
-      },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      lastLoginAt: new Date().toISOString(),
-      isActive: true,
-      role: role, // ユーザーが選択したロール
-    };
-
-    // 特定のIDでドキュメントを作成
-    await setDoc(doc(db, "users", userId), newUser);
+    if (profileError) {
+      console.error("Profile creation error:", profileError);
+      // ユーザーは作成されているが、プロフィール作成に失敗
+      // この場合、ユーザーが後でプロフィールを完成させることができる
+    }
 
     res.status(201).json({
       message: "User created successfully",
-      user: {
-        id: userId,
-        username: newUser.username,
-        email: newUser.email,
-        role: newUser.role,
-        profile: newUser.profile,
-        createdAt: newUser.createdAt,
+      user: data.user,
+      profile: {
+        username: username,
+        email: email,
       },
     });
+    
   } catch (error) {
-    console.error("Error creating user:", error);
+    console.error("Error during signup:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 }

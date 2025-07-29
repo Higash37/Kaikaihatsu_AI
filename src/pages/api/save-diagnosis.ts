@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { saveQuizResult } from "@/utils/firebase";
+
+import { saveQuizResult } from "@/utils/supabase";
 
 export default async function handler(
   req: NextApiRequest,
@@ -19,21 +20,33 @@ export default async function handler(
       y,
       gender,
       age,
+      userId,
+      quizId = 'default-diagnosis-quiz', // デフォルトの診断クイズID
     } = req.body;
 
     console.log("📌 受信したデータ:", req.body);
 
-    // Firebaseに保存するデータを整形
+    // Supabaseに保存するデータを整形
     const saveData = {
-      emotion_score,
-      rational_score,
-      active_score,
-      passive_score,
-      x,
-      y,
-      gender,
-      age,
-      type: "diagnosis", // 診断データであることを示す
+      userId: userId || 'anonymous',
+      quizId,
+      responses: {
+        emotion_score,
+        rational_score,
+        active_score,
+        passive_score,
+        gender,
+        age,
+      },
+      result: {
+        x,
+        y,
+        type: "diagnosis", // 診断データであることを示す
+        emotion_score,
+        rational_score,
+        active_score,
+        passive_score,
+      },
     };
 
     const docId = await saveQuizResult(saveData);

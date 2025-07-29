@@ -19,7 +19,9 @@ import React, { useState, useEffect } from "react";
 
 import Header from "@/components/Header";
 import Layout from "@/components/Layout";
+import { useAuth } from "@/contexts/SupabaseAuthContext";
 import { Quiz } from "@/types/quiz";
+import { getSafeDisplayName } from "@/utils/userDisplay";
 
 export default function Home() {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
@@ -27,6 +29,7 @@ export default function Home() {
   const [sortBy, setSortBy] = useState<"popularity" | "recent">("popularity");
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchPublicQuizzes = async () => {
@@ -70,7 +73,7 @@ export default function Home() {
     )
     .sort((a, b) => {
       if (sortBy === "popularity") {
-        return b.popularity - a.popularity;
+        return (b.totalResponses || 0) - (a.totalResponses || 0);
       } else {
         return (
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -78,8 +81,27 @@ export default function Home() {
       }
     });
 
-  const handleQuizClick = (quizId: string) => {
-    router.push(`/quiz?id=${quizId}`);
+  const handleQuizClick = async (quizId: string) => {
+    try {
+      // クイズデータを取得
+      const response = await fetch(`/api/quiz/${quizId}`);
+      if (!response.ok) {
+        throw new Error("クイズの取得に失敗しました");
+      }
+      
+      const quizData = await response.json();
+      
+      // 取得したデータをsessionStorageに保存
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem("quizData", JSON.stringify(quizData));
+      }
+      
+      // クイズページに遷移
+      router.push(`/quiz?id=${quizId}`);
+    } catch (error) {
+      console.error("クイズの取得エラー:", error);
+      alert("クイズの読み込みに失敗しました。もう一度お試しください。");
+    }
   };
 
   const handleSortChange = (
@@ -91,13 +113,6 @@ export default function Home() {
     }
   };
 
-  const clearSessionStorage = () => {
-    sessionStorage.clear();
-    console.log("sessionStorageをクリアしました");
-    alert(
-      "セッションストレージをクリアしました。ページを再読み込みしてください。"
-    );
-  };
 
   return (
     <Layout>
@@ -114,6 +129,7 @@ export default function Home() {
         <Box
           sx={{
             padding: { xs: 2, md: 3 },
+            width: { xs: "100%", lg: "75%" },
             maxWidth: "1200px",
             margin: "0 auto",
           }}
@@ -184,14 +200,6 @@ export default function Home() {
               </ToggleButtonGroup>
 
               {/* デバッグ用ボタン */}
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={clearSessionStorage}
-                sx={{ fontSize: "0.75rem" }}
-              >
-                セッションクリア
-              </Button>
             </Box>
 
             {/* アンケートカード一覧 */}
@@ -253,15 +261,28 @@ export default function Home() {
                           }}
                         >
                           <Typography variant="caption" color="text.secondary">
-                            {quiz.creatorName}
+                            {getSafeDisplayName(quiz.creatorName)}
                           </Typography>
-                          <Typography
-                            variant="caption"
-                            color="primary.main"
-                            sx={{ fontWeight: "bold" }}
-                          >
-                            {quiz.totalResponses || 0} 回答
-                          </Typography>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                            <Typography
+                              variant="caption"
+                              sx={{ 
+                                fontWeight: "bold",
+                                color: '#667eea'
+                              }}
+                            >
+                              {quiz.totalResponses || 0} 回答
+                            </Typography>
+                            {(quiz.completedResponses !== undefined || quiz.inProgressResponses !== undefined) && (
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{ fontSize: '0.7rem' }}
+                              >
+                                完了: {quiz.completedResponses || 0} | 進行中: {quiz.inProgressResponses || 0}
+                              </Typography>
+                            )}
+                          </Box>
                         </Box>
 
                         {/* アクションボタン */}
@@ -281,6 +302,33 @@ export default function Home() {
                           >
                             分析を見る
                           </Button>
+                          {/* 作成者のみ編集ボタンを表示 */}
+                          {user && quiz.creatorId === user.id && (
+                            <Button
+                              variant="contained"
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/edit/${quiz.id}`);
+                              }}
+                              sx={{
+                                flex: 1,
+                                fontSize: "0.75rem",
+                                py: 0.5,
+                                backgroundColor: "#667eea !important",
+                                borderRadius: 3,
+                                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+                                "&:hover": { 
+                                  backgroundColor: "#5a67d8 !important",
+                                  boxShadow: '0 6px 16px rgba(102, 126, 234, 0.4)',
+                                  transform: 'translateY(-1px)',
+                                },
+                                transition: 'all 0.2s ease-in-out',
+                              }}
+                            >
+                              編集
+                            </Button>
+                          )}
                         </Box>
 
                         {/* タグ */}
@@ -307,7 +355,7 @@ export default function Home() {
                             {quiz.questionCount}問
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
-                            {quiz.popularity}回実施
+                            {quiz.totalResponses || 0}回実施
                           </Typography>
                         </Box>
                       </CardContent>

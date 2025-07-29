@@ -16,20 +16,40 @@ import {
 
 // 新しいデータ構造に合わせた型定義
 type Question = {
-  id: number;
+  id: string;
   text: string;
+  type: string;
+  required: boolean;
+  order: number;
+  axisId?: number;
 };
 
-type Indicator = {
+type Axis = {
   id: number;
   name: string;
   description: string;
 };
 
 type QuizData = {
+  id: string;
   title: string;
+  description: string;
   questions: Question[];
-  indicators: Indicator[];
+  axes?: Axis[];
+  indicators?: any[];
+  questionCount: number;
+  isPublic: boolean;
+  tags: string[];
+  totalResponses: number;
+  popularity: number;
+  averageRating?: number;
+  creatorId: string;
+  creatorName: string;
+  createdAt: string;
+  updatedAt: string;
+  enableDemographics: boolean;
+  enableLocationTracking: boolean;
+  enableRating: boolean;
 };
 
 export default function Quiz() {
@@ -37,7 +57,7 @@ export default function Quiz() {
   const theme = useTheme();
 
   const [quizData, setQuizData] = useState<QuizData | null>(null);
-  const [answers, setAnswers] = useState<{ [id: number]: number | undefined }>(
+  const [answers, setAnswers] = useState<{ [id: string]: number | undefined }>(
     {}
   );
   const [page, setPage] = useState(0);
@@ -65,7 +85,7 @@ export default function Quiz() {
     );
   }, [page, quizData]);
 
-  const handleBoxClick = (questionId: number, value: number | undefined) => {
+  const handleBoxClick = (questionId: string, value: number | undefined) => {
     setAnswers((prev) => {
       const prevValue = prev[questionId];
       const newValue = prevValue === value ? undefined : value;
@@ -79,7 +99,7 @@ export default function Quiz() {
     try {
       // クイズ回答データを構築
       const responseData = {
-        quizId: (router.query.id as string) || "unknown", // URLからクイズIDを取得
+        quizId: quizData.id || (router.query.id as string) || "unknown", // クイズIDを取得
         answers: Object.entries(answers).map(([questionId, value]) => ({
           questionId: questionId,
           value: value || 0,
@@ -109,6 +129,23 @@ export default function Quiz() {
       const resultData = {
         ...quizData,
         answers,
+        // 軸情報がない場合のデフォルト軸を追加
+        axes: quizData.axes || [
+          {
+            id: 1,
+            name: "感情↔理性",
+            description: "感情的か理性的かの軸",
+            positiveName: "理性的",
+            negativeName: "感情的"
+          },
+          {
+            id: 2,
+            name: "内向↔外向",
+            description: "内向的か外向的かの軸",
+            positiveName: "外向的",
+            negativeName: "内向的"
+          }
+        ]
       };
 
       if (typeof window !== "undefined") {
@@ -122,6 +159,23 @@ export default function Quiz() {
       const resultData = {
         ...quizData,
         answers,
+        // 軸情報がない場合のデフォルト軸を追加
+        axes: quizData.axes || [
+          {
+            id: 1,
+            name: "感情↔理性",
+            description: "感情的か理性的かの軸",
+            positiveName: "理性的",
+            negativeName: "感情的"
+          },
+          {
+            id: 2,
+            name: "内向↔外向",
+            description: "内向的か外向的かの軸",
+            positiveName: "外向的",
+            negativeName: "内向的"
+          }
+        ]
       };
 
       if (typeof window !== "undefined") {
@@ -220,8 +274,8 @@ export default function Quiz() {
         >
           <Box
             sx={{
-              width: "100%",
-              maxWidth: { xs: "90%", sm: "800px" },
+              width: { xs: "95%", lg: "75%" },
+              maxWidth: "1200px",
               mx: "auto",
             }}
           >
@@ -270,8 +324,8 @@ export default function Quiz() {
             sx={{
               mt: { xs: 18, sm: 20, md: 22, lg: 24, xl: 26 },
               mx: "auto",
-              width: "100%",
-              maxWidth: { xs: "90%", sm: "800px" },
+              width: { xs: "95%", lg: "75%" },
+              maxWidth: "1200px",
             }}
           >
             <Typography
@@ -345,8 +399,8 @@ export default function Quiz() {
           sx={{
             display: "flex",
             justifyContent: "space-between",
-            width: "100%",
-            maxWidth: { xs: "90%", sm: "800px" },
+            width: "75%",
+            maxWidth: "1200px",
             mt: { xs: 4, sm: 6 },
           }}
         >

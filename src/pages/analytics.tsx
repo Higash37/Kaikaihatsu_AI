@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/router";
 import { Box, Typography, CircularProgress, Alert } from "@mui/material";
+import { useRouter } from "next/router";
+import React, { useState, useEffect } from "react";
 
 import Header from "@/components/Header";
 import Layout from "@/components/Layout";
@@ -93,7 +93,7 @@ export default function Analytics() {
   if (error) {
     return (
       <Layout>
-        <Box sx={{ paddingTop: "80px", p: 3 }}>
+        <Box sx={{ p: 3, width: "100%" }}>
           <Alert severity="error">{error}</Alert>
         </Box>
       </Layout>
@@ -103,7 +103,7 @@ export default function Analytics() {
   if (!quizData) {
     return (
       <Layout>
-        <Box sx={{ paddingTop: "80px", p: 3 }}>
+        <Box sx={{ p: 3, width: "100%" }}>
           <Alert severity="warning">クイズが見つかりません</Alert>
         </Box>
       </Layout>
@@ -112,8 +112,7 @@ export default function Analytics() {
 
   return (
     <Layout>
-      <Box sx={{ paddingTop: "80px" }}>
-        <Header />
+      <Box sx={{ width: "100%", p: { xs: 2, sm: 3 } }}>
         <QuizAnalytics
           quizId={quizData.id}
           quizTitle={quizData.title}

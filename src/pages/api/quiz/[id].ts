@@ -1,17 +1,8 @@
-import {
-  doc,
-  getDoc,
-  deleteDoc,
-  collection,
-  query,
-  where,
-  getDocs,
-  writeBatch,
-} from "firebase/firestore";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { Quiz } from "@/types/quiz";
-import { db } from "@/utils/firebase";
+import { getQuiz, getQuizResponses } from "@/utils/supabase";
+import { supabase } from "@/utils/supabase";
 
 // サンプルクイズデータ
 const sampleQuizzes: Quiz[] = [
@@ -23,17 +14,27 @@ const sampleQuizzes: Quiz[] = [
     creatorName: "サンプル作成者",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    questionCount: 30,
+    questionCount: 5,
     isPublic: true,
     tags: ["恋愛", "診断", "性格"],
     totalResponses: 150,
     popularity: 85,
     averageRating: 4.2,
     axes: [
-      { id: 1, name: "感情重視度", description: "感情的な判断を重視する傾向" },
-      { id: 2, name: "未来志向", description: "将来のことを考える傾向" },
-      { id: 3, name: "直感性", description: "直感を信じる傾向" },
-      { id: 4, name: "現実性", description: "現実的な判断をする傾向" },
+      { 
+        id: 1, 
+        name: "感情性", 
+        description: "感情的な判断と理性的な判断の傾向",
+        positiveName: "Emotional Style",
+        negativeName: "Logical Style"
+      },
+      { 
+        id: 2, 
+        name: "直感性", 
+        description: "直感的な行動と慎重な判断の傾向",
+        positiveName: "Aggressive Play",
+        negativeName: "Innovative Flair"
+      },
     ],
     questions: [
       {
@@ -42,7 +43,7 @@ const sampleQuizzes: Quiz[] = [
         type: "scale",
         required: true,
         order: 1,
-        axisId: 3,
+        axisId: 2,
       },
       {
         id: "q2",
@@ -50,7 +51,7 @@ const sampleQuizzes: Quiz[] = [
         type: "scale",
         required: true,
         order: 2,
-        axisId: 4,
+        axisId: 1,
       },
       {
         id: "q3",
@@ -58,6 +59,22 @@ const sampleQuizzes: Quiz[] = [
         type: "scale",
         required: true,
         order: 3,
+        axisId: 1,
+      },
+      {
+        id: "q4",
+        text: "決断する前にじっくりと考える方だ。",
+        type: "scale",
+        required: true,
+        order: 4,
+        axisId: 2,
+      },
+      {
+        id: "q5",
+        text: "論理的に分析してから判断することが多い。",
+        type: "scale",
+        required: true,
+        order: 5,
         axisId: 1,
       },
     ],
@@ -79,6 +96,22 @@ const sampleQuizzes: Quiz[] = [
     totalResponses: 89,
     popularity: 72,
     averageRating: 4.0,
+    axes: [
+      { 
+        id: 1, 
+        name: "表現力", 
+        description: "コミュニケーションの積極性",
+        positiveName: "Active Communication",
+        negativeName: "Thoughtful Listening"
+      },
+      { 
+        id: 2, 
+        name: "対話スタイル", 
+        description: "相手との関わり方",
+        positiveName: "Direct Expression",
+        negativeName: "Empathetic Response"
+      },
+    ],
     questions: [
       {
         id: "q1",
@@ -86,6 +119,7 @@ const sampleQuizzes: Quiz[] = [
         type: "scale",
         required: true,
         order: 1,
+        axisId: 1,
       },
       {
         id: "q2",
@@ -93,6 +127,7 @@ const sampleQuizzes: Quiz[] = [
         type: "scale",
         required: true,
         order: 2,
+        axisId: 2,
       },
       {
         id: "q3",
@@ -100,6 +135,7 @@ const sampleQuizzes: Quiz[] = [
         type: "scale",
         required: true,
         order: 3,
+        axisId: 1,
       },
     ],
     enableDemographics: false,
@@ -120,6 +156,22 @@ const sampleQuizzes: Quiz[] = [
     totalResponses: 234,
     popularity: 95,
     averageRating: 4.5,
+    axes: [
+      { 
+        id: 1, 
+        name: "学習アプローチ", 
+        description: "理論と実践のバランス",
+        positiveName: "Research Focus",
+        negativeName: "Practical Skills"
+      },
+      { 
+        id: 2, 
+        name: "環境選好", 
+        description: "学習環境の好み",
+        positiveName: "Global Perspective",
+        negativeName: "Career Oriented"
+      },
+    ],
     questions: [
       {
         id: "q1",
@@ -127,6 +179,7 @@ const sampleQuizzes: Quiz[] = [
         type: "scale",
         required: true,
         order: 1,
+        axisId: 1,
       },
       {
         id: "q2",
@@ -134,6 +187,7 @@ const sampleQuizzes: Quiz[] = [
         type: "scale",
         required: true,
         order: 2,
+        axisId: 1,
       },
       {
         id: "q3",
@@ -141,6 +195,7 @@ const sampleQuizzes: Quiz[] = [
         type: "scale",
         required: true,
         order: 3,
+        axisId: 2,
       },
       {
         id: "q4",
@@ -148,6 +203,7 @@ const sampleQuizzes: Quiz[] = [
         type: "scale",
         required: true,
         order: 4,
+        axisId: 2,
       },
       {
         id: "q5",
@@ -155,6 +211,7 @@ const sampleQuizzes: Quiz[] = [
         type: "scale",
         required: true,
         order: 5,
+        axisId: 2,
       },
     ],
     enableDemographics: false,
@@ -176,28 +233,43 @@ export default async function handler(
   if (req.method === "GET") {
     try {
       console.log(`クイズ取得開始: ${id}`);
-      console.log("Firebase利用可能:", !!db);
 
       let quiz: Quiz | null = null;
 
-      // Firestoreからクイズを取得（利用可能な場合）
-      if (db) {
-        try {
-          const quizDoc = await getDoc(doc(db, "quizzes", id));
-          if (quizDoc.exists()) {
-            quiz = { id: quizDoc.id, ...quizDoc.data() } as Quiz;
-            console.log("Firestoreからクイズを取得:", quiz.id);
-          } else {
-            console.log("Firestoreにクイズが見つかりません:", id);
-          }
-        } catch (firestoreError) {
-          console.log("Firestoreからの取得に失敗:", firestoreError);
+      // Supabaseからクイズを取得
+      try {
+        const supabaseQuiz = await getQuiz(id);
+        if (supabaseQuiz) {
+          // Supabaseのデータ構造を既存の Quiz 型に変換
+          quiz = {
+            id: supabaseQuiz.id,
+            title: supabaseQuiz.title,
+            description: supabaseQuiz.description || "",
+            creatorId: supabaseQuiz.user_id,
+            creatorName: "Unknown", // プロファイル情報から取得が必要
+            createdAt: supabaseQuiz.created_at,
+            updatedAt: supabaseQuiz.updated_at,
+            questionCount: supabaseQuiz.questions?.questions?.length || 0,
+            isPublic: supabaseQuiz.is_public,
+            tags: [],
+            totalResponses: 0, // 別途計算が必要
+            popularity: 0,
+            averageRating: 0,
+            axes: supabaseQuiz.questions?.axes || [],
+            questions: supabaseQuiz.questions?.questions || [],
+            enableDemographics: false,
+            enableLocationTracking: false,
+            enableRating: true,
+          };
+          console.log("Supabaseからクイズを取得:", quiz.id);
+        } else {
+          console.log("Supabaseにクイズが見つかりません:", id);
         }
-      } else {
-        console.log("Firebase not available");
+      } catch (supabaseError) {
+        console.log("Supabaseからの取得に失敗:", supabaseError);
       }
 
-      // Firestoreから取得できない場合はサンプルデータから検索
+      // Supabaseから取得できない場合はサンプルデータから検索
       if (!quiz) {
         console.log("サンプルデータから検索中...");
         quiz = sampleQuizzes.find((q) => q.id === id) || null;
@@ -217,23 +289,54 @@ export default async function handler(
       console.error("クイズの取得エラー:", error);
       res.status(500).json({ error: "Internal server error" });
     }
+  } else if (req.method === "PUT") {
+    try {
+      const updateData = req.body;
+      
+      // 権限チェック（簡易版）
+      const existingQuiz = await getQuiz(id);
+      if (!existingQuiz) {
+        return res.status(404).json({ error: "Quiz not found" });
+      }
+      
+      // TODO: 実際の認証システムと連携して権限チェックを行う
+      
+      // クイズを更新
+      const { error } = await supabase
+        .from('quizzes')
+        .update({
+          ...updateData,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      res.status(200).json({ message: "Quiz updated successfully" });
+    } catch (error) {
+      console.error("クイズの更新エラー:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
   } else if (req.method === "DELETE") {
     try {
-      // クイズを削除
-      await deleteDoc(doc(db, "quizzes", id));
-
-      // 関連する回答も削除
-      const responsesQuery = query(
-        collection(db, "responses"),
-        where("quizId", "==", id)
-      );
-      const responsesSnapshot = await getDocs(responsesQuery);
-
-      if (!responsesSnapshot.empty) {
-        const batch = writeBatch(db);
-        responsesSnapshot.docs.forEach((doc) => batch.delete(doc.ref));
-        await batch.commit();
+      // 関連する診断結果を削除
+      const responses = await getQuizResponses(id);
+      if (responses.length > 0) {
+        const { error: deleteResponsesError } = await supabase
+          .from('diagnoses')
+          .delete()
+          .eq('quiz_id', id);
+        
+        if (deleteResponsesError) throw deleteResponsesError;
       }
+
+      // クイズを削除
+      const { error: deleteQuizError } = await supabase
+        .from('quizzes')
+        .delete()
+        .eq('id', id);
+
+      if (deleteQuizError) throw deleteQuizError;
 
       res.status(200).json({ message: "Quiz deleted successfully" });
     } catch (error) {

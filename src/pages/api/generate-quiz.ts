@@ -1,10 +1,9 @@
-import { doc, setDoc } from "firebase/firestore";
 import type { NextApiRequest, NextApiResponse } from "next";
 import OpenAI from "openai";
 
-import { db } from "@/utils/firebase";
+import { createQuiz } from "@/utils/supabase";
 
-// OpenAIクライアントの初期化（APIキーがある場合のみ）
+// OpenAI APIクライアントの初期化（APIキーがある場合のみ）
 let openai: OpenAI | null = null;
 if (process.env.OPENAI_API_KEY) {
   openai = new OpenAI({
@@ -23,8 +22,15 @@ function generateQuizId(): string {
 type QuizData = {
   title: string;
   questions: { id: number; text: string; axisId: number }[];
-  indicators: { id: number; name: string; description: string }[];
-  axes: { id: number; name: string; description: string }[];
+  axes: { 
+    id: number; 
+    name: string; 
+    description: string;
+    positiveName?: string;
+    negativeName?: string;
+  }[];
+  results?: any[];
+  resultType?: string;
 };
 
 type ErrorResponse = {
@@ -50,6 +56,12 @@ export default async function handler(
     enableRating = false,
     creatorId,
     creatorName,
+    // ウィザードから来たデータ
+    isWizardCreated = false,
+    questions: wizardQuestions,
+    results: wizardResults,
+    axes: wizardAxes,
+    resultType,
   } = req.body;
 
   if (!theme || typeof theme !== "string") {
@@ -80,73 +92,128 @@ export default async function handler(
   }
 
   try {
-    // OpenAI APIを使ってクイズを生成
-    const prompt = `
-      以下のテーマに関する診断クイズを作成してください。テーマから外れないよう注意深く作成してください。
+    let parsedContent: QuizData;
 
-      # テーマ
-      ${theme}
+    // ウィザードから来た場合は既存データを使用、そうでなければAI生成
+    if (isWizardCreated && wizardQuestions && wizardResults && wizardAxes) {
+      // ウィザードで作成されたデータを使用
+      parsedContent = {
+        title: `${theme}診断`,
+        questions: wizardQuestions.map((q: any, index: number) => ({
+          id: index + 1,
+          text: q.text,
+          axisId: Math.abs(q.axisWeights.x) > Math.abs(q.axisWeights.y) ? 1 : 2, // より強い重みを持つ軸を選択
+        })),
+        axes: [
+          {
+            id: 1,
+            name: wizardAxes[0]?.name || "X軸",
+            description: wizardAxes[0]?.description || "",
+            positiveName: wizardAxes[0]?.positiveName || "",
+            negativeName: wizardAxes[0]?.negativeName || "",
+          },
+          {
+            id: 2,
+            name: wizardAxes[1]?.name || "Y軸", 
+            description: wizardAxes[1]?.description || "",
+            positiveName: wizardAxes[1]?.positiveName || "",
+            negativeName: wizardAxes[1]?.negativeName || "",
+          }
+        ],
+        results: wizardResults,
+        resultType: resultType || "診断結果",
+      };
+    } else {
+      // OpenAI APIを使ってクイズを生成
+      const prompt = `あなたは心理診断・適性診断の専門家です。以下のテーマに関する診断クイズを作成してください。
+テーマの本質を理解し、そのテーマに最も適した診断アプローチを採用してください。
 
-      # 重要な要件
-      - 必ず上記のテーマに沿った内容のみを作成してください
-      - テーマが「テニス」なら全ての質問と指標をテニスに関連付けてください
-      - テーマが「サッカー」以外の場合、サッカーに関する内容は一切含めないでください
-      - 診断のタイトルを"title"としてください（テーマを反映したタイトル）
-      
-      # 4軸要素の生成
-      - 4つの軸要素を"axes"というキーの配列に格納してください
-      - 各軸は{ "id": (1-4), "name": "(軸名)", "description": "(軸の説明)" }の形式にしてください
-      - 軸名はテーマに関連した能力や特性を表すものにしてください
-      
-      # 質問の生成
-      - 質問は${questionCount}個作成し、"questions"というキーの配列に格納してください
-      - 各質問は{ "id": (数値), "text": "(質問文)", "axisId": (1-4) }の形式にしてください
-      - axisIdは質問がどの軸に対応するかを示します（1-4の値）
-      - 質問は1-5のスケールで回答できるようにしてください（1=そう思わない、5=そう思う）
-      - 各軸に均等に質問を分配してください（${Math.ceil(questionCount / 4)}問程度ずつ）
-      
-      # 診断結果の指標
-      - 診断結果の指標を4個作成し、"indicators"というキーの配列に格納してください
-      - 各指標は{ "id": (数値), "name": "(指標名)", "description": "(指標の詳細な説明)" }の形式にしてください
-      - 指標名と説明は必ずテーマに関連した内容にしてください
-      
-      # 出力形式
-      - 出力は必ず指定されたキーを持つJSONオブジェクト形式に従ってください
-      
-      例：テーマが「プログラマー適性診断」の場合
-      - 軸：「論理的思考力」「創造性」「問題解決力」「チームワーク」
-      - 質問：「複雑な問題を段階的に解決できる」（axisId: 1）
-      - 指標：「システム設計力」「アルゴリズム理解度」「デバッグ能力」「コミュニケーション力」
-    `;
+# テーマ
+${theme}
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4-turbo",
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a helpful assistant designed to output JSON. You must strictly follow the given theme and never mix different themes. If the theme is about tennis, ALL content must be tennis-related. If the theme is about cooking, ALL content must be cooking-related. Never use generic sports content when a specific sport is mentioned.",
-        },
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-      response_format: { type: "json_object" },
-    });
+# 診断作成のガイドライン
 
-    const content = response.choices[0]?.message?.content;
+## テーマの分析と適切なアプローチの選択
+テーマを分析し、以下のうち最も適切なアプローチを採用してください：
 
-    if (!content) {
-      throw new Error("AIからの応答が空です。");
+1. **技能・能力診断**: スポーツのプレイスタイル、職業適性、学習スタイルなど
+   → 能力、技術、パフォーマンスに関する質問を中心に
+
+2. **嗜好・マッチング診断**: 好きなもの、相性、適合度など
+   → 価値観、性格特性、ライフスタイルに関する質問を中心に
+
+3. **性格・心理診断**: 性格タイプ、心理傾向など
+   → 行動パターン、思考スタイル、感情反応に関する質問を中心に
+
+## 質問作成の原則
+- テーマに完全に沿った内容のみを作成
+- 回答者の内面（性格、価値観、行動パターン、能力など）を探る質問
+- 抽象的すぎず、具体的で分かりやすい表現
+- 特定の固有名詞（人名、ブランド名など）は避ける
+- 質問は「あなたは〜」「〜することが多い」「〜だと思う」の形式
+
+# 必須の出力形式
+
+## 診断タイトル
+- "title": テーマを反映した魅力的なタイトル
+
+## 4つの指標（東西南北）
+- "axes": [
+    { 
+      "id": 1, 
+      "name": "X軸の名称", 
+      "description": "X軸が測定する特性の説明",
+      "positiveName": "右側（東）の指標名（例：攻撃的スタイル）",
+      "negativeName": "左側（西）の指標名（例：戦略的スタイル）"
+    },
+    { 
+      "id": 2, 
+      "name": "Y軸の名称", 
+      "description": "Y軸が測定する特性の説明",
+      "positiveName": "上側（北）の指標名（例：革新的傾向）",
+      "negativeName": "下側（南）の指標名（例：伝統的傾向）"
     }
+  ]
+- 4つの指標で座標グラフの東西南北を表現
+- 各指標は具体的で分かりやすい名称にする
+- テーマに最も適した4つの対極的な特性を設定
 
-    const parsedContent: QuizData = JSON.parse(content);
+## 質問
+- "questions": [{ "id": 数値, "text": "質問文", "axisId": 1-2 }]
+- 質問数: ${questionCount}個
+- 各軸に均等分配（約${Math.ceil(questionCount / 2)}問ずつ）
+- 1-5のリッカート尺度で回答（1=そう思わない、5=そう思う）
+
+# 出力
+必ず有効なJSONオブジェクトとして出力してください。例外やエラーメッセージを含めず、純粋なJSONのみを出力してください。`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4-turbo",
+        messages: [
+          {
+            role: "system",
+            content: "あなたは心理診断・適性診断の専門家です。各テーマを慎重に分析し、最適な診断アプローチを選択してください。回答者の本質的な洞察を明らかにする、テーマに特化した意味のある質問を作成してください。必ず日本語で回答し、特定の名前、ブランド、専門用語は避けてください。テーマに関連する普遍的な人間の特性に焦点を当ててください。有効なJSONのみを出力してください。",
+          },
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+        response_format: { type: "json_object" },
+      });
+
+      const content = response.choices[0]?.message?.content;
+
+      if (!content) {
+        throw new Error("OpenAIからの応答が空です。");
+      }
+
+      parsedContent = JSON.parse(content);
+    }
 
     if (
       !parsedContent.title ||
       !parsedContent.questions ||
-      !parsedContent.indicators ||
       !parsedContent.axes
     ) {
       throw new Error("AIが生成したデータの形式が正しくありません。");
@@ -160,7 +227,7 @@ export default async function handler(
       creatorName,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      questionCount,
+      questionCount: parsedContent.questions.length,
       isPublic,
       tags,
       totalResponses: 0,
@@ -174,32 +241,46 @@ export default async function handler(
         required: true,
         order: q.id,
       })),
+      indicators: [], // indicatorsを空配列に
+      // ウィザード用の追加データ
+      isWizardCreated,
+      results: parsedContent.results || [],
+      resultType: parsedContent.resultType || "",
     };
 
-    // Firestoreにクイズを保存（Firebaseが利用可能な場合のみ）
-    if (db) {
-      try {
-        console.log("保存するクイズデータ:", {
-          id: quizData.id,
-          creatorId: quizData.creatorId,
-          creatorName: quizData.creatorName,
-          isPublic: quizData.isPublic,
-          title: quizData.title,
-        });
+    // Supabaseにクイズを保存
+    try {
+      console.log("保存するクイズデータ:", {
+        id: quizData.id,
+        creatorId: quizData.creatorId,
+        creatorName: quizData.creatorName,
+        isPublic: quizData.isPublic,
+        title: quizData.title,
+      });
 
-        await setDoc(doc(db, "quizzes", quizData.id), quizData);
-        console.log("クイズがFirestoreに保存されました:", quizData.id);
-      } catch (firebaseError) {
-        console.error("Firestore保存エラー:", firebaseError);
-        // Firebaseエラーでもクイズデータは返す
-      }
-    } else {
-      console.log("Firebase not available, skipping save");
+      const savedId = await createQuiz({
+        userId: quizData.creatorId,
+        title: quizData.title,
+        description: `${theme}に関する診断クイズ`,
+        category: theme,
+        difficulty: 'medium',
+        isPublic: quizData.isPublic,
+        questions: quizData,
+      });
+      
+      console.log("クイズがSupabaseに保存されました:", savedId);
+    } catch (supabaseError) {
+      console.error("Supabase保存エラー:", supabaseError);
+      // Supabaseエラーでもクイズデータは返す
     }
 
     res.status(200).json(quizData);
   } catch (error) {
     console.error("AIクイズ生成エラー:", error);
-    res.status(500).json({ error: "クイズの生成に失敗しました。" });
+    console.error("Error details:", error instanceof Error ? error.message : error);
+    res.status(500).json({ 
+      error: "クイズの生成に失敗しました。", 
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
   }
 }

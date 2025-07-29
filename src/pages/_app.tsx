@@ -4,9 +4,8 @@ import "@/styles/globals.css"; // globals.css (今回は TailWind を使用) か
 import { ThemeProvider } from "@mui/material/styles";
 import type { AppProps } from "next/app"; // component と pageProps を型定義するため使用 型安全のために用意。
 // ↑ いわゆるフォーマットを用意しているようなもの。
-import { SessionProvider } from "next-auth/react";
 
-import { AuthProvider } from "../contexts/AuthContext"; // 認証コンテキストをインポート
+import { AuthProvider } from "../contexts/SupabaseAuthContext"; // 認証コンテキストをインポート
 import theme from "../theme"; // 作成したテーマをインポート
 
 //全ページに共通するレイアウト
@@ -15,17 +14,14 @@ import theme from "../theme"; // 作成したテーマをインポート
 //    ③ つまり、グローバルなスタイル、レイアウト、状態管理、ページ遷移処理をここに記述できる!!
 // 2. ① Component とは? → 現在表示すべきページの React コンポーネント(例：index.tsx)
 //    ② pageProps とは? → コンポーネントの(データ)中身(例：message: "Hello from Tokyo!")
-function MyApp({ Component, pageProps: { session, ...pageProps } }: AppProps) {
+function MyApp({ Component, pageProps }: AppProps) {
   return (
-    <SessionProvider session={session}>
-      <ThemeProvider theme={theme}>
-        <AuthProvider>
-          {" "}
-          {/* AuthProvider を追加 */}
-          <Component {...pageProps} />
-        </AuthProvider>
-      </ThemeProvider>
-    </SessionProvider>
+    <ThemeProvider theme={theme}>
+      <AuthProvider>
+        {/* AuthProvider を追加 */}
+        <Component {...pageProps} />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

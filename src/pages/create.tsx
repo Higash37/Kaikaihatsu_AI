@@ -20,10 +20,12 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/router";
 import React, { useState, useEffect } from "react";
 
+import { useAuth } from "../contexts/SupabaseAuthContext";
+
+import CreateModeModal from "@/components/CreateModeModal";
 import Header from "@/components/Header";
 import Layout from "@/components/Layout";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { useAuth } from "@/contexts/AuthContext";
 
 function Create() {
   const [theme, setTheme] = useState("");
@@ -35,17 +37,18 @@ function Create() {
   const [enableRating, setEnableRating] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showModeModal, setShowModeModal] = useState(false);
   const router = useRouter();
   const muiTheme = useTheme();
   const { user } = useAuth();
 
-  // ユーザーがログインしているかチェック
-  useEffect(() => {
-    if (!user) {
-      // ログインしていない場合は認証ページへ
-      router.push("/auth");
-    }
-  }, [user, router]);
+  // 一時的に認証チェックを無効化
+  // useEffect(() => {
+  //   if (!user) {
+  //     // ログインしていない場合は認証ページへ
+  //     router.push("/auth");
+  //   }
+  // }, [user, router]);
 
   // 推奨タグ
   const suggestedTags = [
@@ -74,10 +77,30 @@ function Create() {
       return;
     }
 
-    if (!user) {
-      setError("ログインが必要です。");
+    // モード選択モーダルを表示
+    setShowModeModal(true);
+  };
+
+  const handleModeSelect = async (mode: "auto" | "wizard") => {
+    setShowModeModal(false);
+
+    if (mode === "wizard") {
+      // ウィザード画面に遷移（テーマを引き継ぎ）
+      const params = new URLSearchParams({
+        theme: theme,
+        questionCount: questionCount.toString(),
+      });
+      router.push(`/create-wizard?${params.toString()}`);
       return;
     }
+
+    // Auto mode - 既存の処理を実行
+
+    // 一時的に認証チェックを無効化
+    // if (!user) {
+    //   setError("ログインが必要です。");
+    //   return;
+    // }
 
     setLoading(true);
     setError("");
@@ -96,9 +119,8 @@ function Create() {
           enableDemographics,
           enableLocationTracking,
           enableRating,
-          creatorId: user.id,
-          creatorName:
-            user.username || user.profile?.displayName || "匿名ユーザー",
+          creatorId: user?.id || "temp_user_001",
+          creatorName: user?.username || user?.profile?.displayName || "テストユーザー",
         }),
       });
 
@@ -115,10 +137,10 @@ function Create() {
       }
 
       // 成功メッセージを表示
-      alert("アンケートが正常に生成されました！ホーム画面に反映されます。");
+      alert("アンケートが正常に生成されました！作成したクイズを開始します。");
 
-      // ホーム画面に遷移（新しく生成されたクイズが表示される）
-      router.push("/");
+      // 作成したクイズ画面に直接遷移
+      router.push("/quiz");
     } catch (err: any) {
       setError(err.message || "エラーが発生しました。");
     } finally {
@@ -152,6 +174,7 @@ function Create() {
             textAlign: "center",
             padding: { xs: 2, md: 4 },
             paddingTop: { xs: "80px", sm: "90px" }, // ヘッダー分のマージン
+            paddingBottom: { xs: "120px", sm: "100px" }, // フッター分のマージン
             position: "relative",
             backgroundColor: muiTheme.palette.background.default,
             width: "100%",
@@ -169,7 +192,8 @@ function Create() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.8, duration: 0.5 }}
-            style={{ zIndex: 2, width: "100%", maxWidth: "600px" }}
+            style={{ zIndex: 2, width: "100%", maxWidth: "800px" }}
+          sx={{ width: { xs: "100%", lg: "75%" } }}
           >
             <Typography
               variant="h4"
@@ -184,7 +208,7 @@ function Create() {
             </Typography>
             <Typography
               variant="body1"
-              sx={{ mb: 4, color: muiTheme.palette.text.secondary }}
+              sx={{ mb: 2, color: muiTheme.palette.text.secondary }}
             >
               作成したいアンケートのテーマを入力してください。AIが質問を生成します。
             </Typography>
@@ -204,10 +228,10 @@ function Create() {
                     borderColor: muiTheme.palette.divider,
                   },
                   "&:hover fieldset": {
-                    borderColor: muiTheme.palette.primary.main,
+                    borderColor: '#667eea',
                   },
                   "&.Mui-focused fieldset": {
-                    borderColor: muiTheme.palette.primary.main,
+                    borderColor: '#667eea',
                   },
                 },
               }}
@@ -230,10 +254,10 @@ function Create() {
                     borderColor: muiTheme.palette.divider,
                   },
                   "&:hover fieldset": {
-                    borderColor: muiTheme.palette.primary.main,
+                    borderColor: '#667eea',
                   },
                   "&.Mui-focused fieldset": {
-                    borderColor: muiTheme.palette.primary.main,
+                    borderColor: '#667eea',
                   },
                 }}
               >
@@ -375,22 +399,24 @@ function Create() {
                 py: 2,
                 fontSize: "1.2rem",
                 fontWeight: "bold",
-                backgroundColor: "#007AFF !important",
+                backgroundColor: "#667eea !important",
                 color: "#FFFFFF !important",
-                borderRadius: 2,
-                boxShadow: "0 3px 6px rgba(0, 0, 0, 0.1)",
+                borderRadius: 3,
+                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
                 "&:hover": {
-                  backgroundColor: "#0056CC !important",
-                  boxShadow: "0 6px 12px rgba(0, 0, 0, 0.2)",
+                  backgroundColor: "#5a67d8 !important",
+                  boxShadow: '0 6px 16px rgba(102, 126, 234, 0.4)',
+                  transform: 'translateY(-1px)',
                 },
                 "&:focus": {
-                  backgroundColor: "#007AFF !important",
+                  backgroundColor: "#667eea !important",
                 },
                 "&.Mui-disabled": {
                   backgroundColor: "#CCCCCC !important",
                   color: "#888888 !important",
                   opacity: "0.7 !important",
                 },
+                transition: 'all 0.2s ease-in-out',
               }}
             >
               {loading ? (
@@ -406,6 +432,13 @@ function Create() {
             )}
           </motion.div>
         </Box>
+
+        {/* モード選択モーダル */}
+        <CreateModeModal
+          open={showModeModal}
+          onClose={() => setShowModeModal(false)}
+          onSelectMode={handleModeSelect}
+        />
       </motion.div>
     </Layout>
   );

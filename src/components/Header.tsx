@@ -25,13 +25,16 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useState } from "react";
 
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/SupabaseAuthContext";
+import { getUserInitials, getSafeDisplayName } from "@/utils/userDisplay";
 
 const Header = () => {
   const router = useRouter();
   const isHome = router.pathname === "/";
   const theme = useTheme();
-  const { user, logout } = useAuth();
+  const { user, profile, signOut } = useAuth();
+  
+  console.log('Header - Current user:', user, 'Profile:', profile);
   const [anchorEl, setAnchorEl] = useState<any>(null);
   const [mobileMenuAnchorEl, setMobileMenuAnchorEl] = useState<any>(null);
 
@@ -48,8 +51,8 @@ const Header = () => {
     setMobileMenuAnchorEl(null);
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await signOut();
     handleMenuClose();
     router.push("/");
   };
@@ -59,9 +62,6 @@ const Header = () => {
     handleMenuClose();
   };
 
-  const getUserInitials = (username: string) => {
-    return username.charAt(0).toUpperCase();
-  };
 
   return (
     <Box
@@ -78,7 +78,7 @@ const Header = () => {
         backgroundColor: theme.palette.background.paper,
         boxShadow: "none",
         borderBottom: `1px solid ${theme.palette.divider}`,
-        zIndex: 10,
+        zIndex: 1100,
       }}
     >
       {/* ロゴ部分 */}
@@ -89,7 +89,7 @@ const Header = () => {
             component="h1"
             sx={{ color: theme.palette.text.primary, fontWeight: "bold" }}
           >
-            LoveNavi
+            SciscitorAI
           </Typography>
         ) : (
           <Link href="/" passHref style={{ textDecoration: "none" }}>
@@ -102,7 +102,7 @@ const Header = () => {
                 cursor: "pointer",
               }}
             >
-              LoveNavi
+              SciscitorAI
             </Typography>
           </Link>
         )}
@@ -116,14 +116,36 @@ const Header = () => {
           <Button
             color="inherit"
             onClick={() => navigateTo("/getting-started")}
-            sx={{ textTransform: "none" }}
+            sx={{ 
+              textTransform: "none",
+              borderRadius: 2,
+              px: 2,
+              py: 0.5,
+              color: '#4a5568',
+              fontWeight: 500,
+              '&:hover': {
+                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                color: '#667eea',
+              }
+            }}
           >
             はじめに
           </Button>
           <Button
             color="inherit"
             onClick={() => navigateTo("/help")}
-            sx={{ textTransform: "none" }}
+            sx={{ 
+              textTransform: "none",
+              borderRadius: 2,
+              px: 2,
+              py: 0.5,
+              color: '#4a5568',
+              fontWeight: 500,
+              '&:hover': {
+                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                color: '#667eea',
+              }
+            }}
           >
             ヘルプ
           </Button>
@@ -134,14 +156,37 @@ const Header = () => {
               <Button
                 color="inherit"
                 onClick={() => navigateTo("/create")}
-                sx={{ textTransform: "none", fontWeight: "bold" }}
+                sx={{ 
+                  textTransform: "none", 
+                  fontWeight: 600,
+                  borderRadius: 2,
+                  px: 2,
+                  py: 0.5,
+                  color: '#667eea',
+                  backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                  '&:hover': {
+                    backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                    color: '#5a67d8',
+                  }
+                }}
               >
                 クイズ作成
               </Button>
               <Button
                 color="inherit"
                 onClick={() => navigateTo("/history")}
-                sx={{ textTransform: "none" }}
+                sx={{ 
+                  textTransform: "none",
+                  borderRadius: 2,
+                  px: 2,
+                  py: 0.5,
+                  color: '#4a5568',
+                  fontWeight: 500,
+                  '&:hover': {
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    color: '#667eea',
+                  }
+                }}
               >
                 履歴・分析
               </Button>
@@ -157,11 +202,18 @@ const Header = () => {
                 sx={{
                   width: 32,
                   height: 32,
-                  backgroundColor: theme.palette.primary.main,
+                  backgroundColor: '#667eea',
                   fontSize: "0.875rem",
+                  fontWeight: 600,
+                  boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)',
+                  '&:hover': {
+                    backgroundColor: '#5a67d8',
+                    transform: 'scale(1.05)',
+                    transition: 'all 0.2s ease-in-out',
+                  }
                 }}
               >
-                {getUserInitials(user.username)}
+                {getUserInitials(profile?.username)}
               </Avatar>
             </IconButton>
           </Box>
@@ -172,14 +224,23 @@ const Header = () => {
             onClick={() => navigateTo("/auth")}
             sx={{
               textTransform: "none",
-              backgroundColor: "#1976d2 !important",
+              backgroundColor: "#667eea !important",
               color: "#ffffff !important",
+              borderRadius: 3,
+              px: 3,
+              py: 1,
+              fontWeight: 600,
+              boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
               "&:hover": {
-                backgroundColor: "#1565c0 !important",
+                backgroundColor: "#5a67d8 !important",
+                boxShadow: '0 6px 16px rgba(102, 126, 234, 0.4)',
+                transform: 'translateY(-1px)',
               },
               "&:focus": {
-                backgroundColor: "#1976d2 !important",
+                backgroundColor: "#667eea !important",
+                boxShadow: '0 0 0 3px rgba(102, 126, 234, 0.2)',
               },
+              transition: 'all 0.2s ease-in-out',
             }}
           >
             ログイン
@@ -210,7 +271,7 @@ const Header = () => {
             <ListItemIcon>
               <PersonIcon />
             </ListItemIcon>
-            <ListItemText primary={user?.username} />
+            <ListItemText primary={getSafeDisplayName(profile?.username)} />
           </MenuItem>
           <Divider />
           <MenuItem onClick={() => navigateTo("/settings")}>
@@ -266,34 +327,31 @@ const Header = () => {
           </MenuItem>
 
           {/* ログインユーザー向けメニュー */}
+          {user && <Divider />}
           {user && (
-            <>
-              <Divider />
-              <MenuItem onClick={() => navigateTo("/create")}>
-                <ListItemIcon>
-                  <PersonIcon />
-                </ListItemIcon>
-                <ListItemText primary="クイズ作成" />
-              </MenuItem>
-              <MenuItem onClick={() => navigateTo("/history")}>
-                <ListItemIcon>
-                  <SettingsIcon />
-                </ListItemIcon>
-                <ListItemText primary="履歴・分析" />
-              </MenuItem>
-            </>
+            <MenuItem onClick={() => navigateTo("/create")}>
+              <ListItemIcon>
+                <PersonIcon />
+              </ListItemIcon>
+              <ListItemText primary="クイズ作成" />
+            </MenuItem>
           )}
-
           {user && (
-            <>
-              <Divider />
-              <MenuItem onClick={() => navigateTo("/settings")}>
-                <ListItemIcon>
-                  <SettingsIcon />
-                </ListItemIcon>
-                <ListItemText primary="設定" />
-              </MenuItem>
-            </>
+            <MenuItem onClick={() => navigateTo("/history")}>
+              <ListItemIcon>
+                <SettingsIcon />
+              </ListItemIcon>
+              <ListItemText primary="履歴・分析" />
+            </MenuItem>
+          )}
+          {user && <Divider />}
+          {user && (
+            <MenuItem onClick={() => navigateTo("/settings")}>
+              <ListItemIcon>
+                <SettingsIcon />
+              </ListItemIcon>
+              <ListItemText primary="設定" />
+            </MenuItem>
           )}
         </Menu>
       </Box>

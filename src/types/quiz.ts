@@ -18,6 +18,8 @@ export interface Quiz {
 
   // 統計情報
   totalResponses: number;
+  completedResponses?: number; // 完了した回答数
+  inProgressResponses?: number; // 進行中の回答数
   popularity: number; // 人気度スコア
   averageRating?: number; // 平均評価
 
@@ -98,6 +100,8 @@ export interface Axis {
   id: number;
   name: string;
   description: string;
+  positiveName?: string; // プラス方向の指標名
+  negativeName?: string; // マイナス方向の指標名
 }
 
 // 質問の定義

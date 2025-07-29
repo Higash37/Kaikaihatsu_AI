@@ -1,14 +1,7 @@
-import {
-  collection,
-  query,
-  where,
-  limit as firestoreLimit,
-  getDocs,
-} from "firebase/firestore";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { Quiz } from "@/types/quiz";
-import { db } from "@/utils/firebase";
+import { getPublicQuizzes } from "@/utils/supabase";
 
 // テスト用のサンプルクイズデータ
 const sampleQuizzes: Quiz[] = [
@@ -177,56 +170,53 @@ export default async function handler(
     const { sort = "popularity", limit = 20 } = req.query;
 
     console.log("公開クイズ取得開始...");
-    console.log("Firebase利用可能:", !!db);
 
     // デフォルトでサンプルデータを使用
     let quizzes = [...sampleQuizzes];
     console.log("初期サンプルデータ数:", quizzes.length);
 
-    // Firestoreから公開クイズを取得（実際のデータがある場合）
-    if (db) {
-      try {
-        console.log("Firestoreからデータを取得中...");
-        const quizzesQuery = query(
-          collection(db, "quizzes"),
-          where("isPublic", "==", true),
-          firestoreLimit(Number(limit))
-        );
+    // Supabaseから公開クイズを取得
+    try {
+      console.log("Supabaseからデータを取得中...");
+      const supabaseQuizzes = await getPublicQuizzes();
+      console.log("Supabaseから取得したクイズ数:", supabaseQuizzes.length);
 
-        const quizzesSnapshot = await getDocs(quizzesQuery);
-        console.log(
-          "Firestoreから取得した文書数:",
-          quizzesSnapshot.docs.length
-        );
+      if (supabaseQuizzes.length > 0) {
+        // Supabaseのデータ構造をフロントエンド用に変換
+        const convertedQuizzes = supabaseQuizzes.map((quiz: any) => ({
+          id: quiz.id,
+          title: quiz.title,
+          description: quiz.description,
+          creatorId: quiz.user_id,
+          creatorName: quiz.profiles?.username || 'Unknown',
+          createdAt: quiz.created_at,
+          updatedAt: quiz.updated_at,
+          questionCount: quiz.questions?.questions?.length || 0,
+          isPublic: quiz.is_public,
+          tags: quiz.questions?.tags || [],
+          totalResponses: 0, // TODO: 統計から取得
+          popularity: Math.floor(Math.random() * 100), // TODO: 統計から計算
+          averageRating: 4.0, // TODO: 統計から計算
+          questions: quiz.questions?.questions || [],
+          enableDemographics: quiz.questions?.enableDemographics || false,
+          enableLocationTracking: quiz.questions?.enableLocationTracking || false,
+          enableRating: quiz.questions?.enableRating || true,
+        })) as Quiz[];
 
-        if (quizzesSnapshot.docs.length > 0) {
-          const firestoreQuizzes = quizzesSnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          })) as Quiz[];
+        console.log("変換後のクイズデータ:", convertedQuizzes.map(q => ({
+          id: q.id,
+          title: q.title,
+          creatorName: q.creatorName,
+          isPublic: q.isPublic,
+        })));
 
-          console.log(
-            "Firestoreデータ:",
-            firestoreQuizzes.map((q) => ({
-              id: q.id,
-              title: q.title,
-              isPublic: q.isPublic,
-            }))
-          );
-
-          // Firestoreのデータがある場合はそちらを優先
-          quizzes = firestoreQuizzes;
-        } else {
-          console.log("Firestoreにデータがないため、サンプルデータを使用");
-        }
-      } catch (firestoreError) {
-        console.log(
-          "Firestoreからの取得に失敗、サンプルデータを使用:",
-          firestoreError
-        );
+        // Supabaseのデータがある場合はそちらを優先
+        quizzes = convertedQuizzes;
+      } else {
+        console.log("Supabaseにデータがないため、サンプルデータを使用");
       }
-    } else {
-      console.log("Firebase not available, using sample data");
+    } catch (supabaseError) {
+      console.log("Supabaseからの取得に失敗、サンプルデータを使用:", supabaseError);
     }
 
     // ソートはJavaScript側で実行
@@ -239,9 +229,12 @@ export default async function handler(
       );
     }
 
+    // リミット適用
+    const limitedQuizzes = quizzes.slice(0, Number(limit));
+
     console.log(
-      `最終的なクイズ数: ${quizzes.length}件`,
-      quizzes.map((q) => ({
+      `最終的なクイズ数: ${limitedQuizzes.length}件`,
+      limitedQuizzes.map((q) => ({
         id: q.id,
         title: q.title,
         creatorName: q.creatorName,
@@ -252,9 +245,9 @@ export default async function handler(
     );
 
     res.status(200).json({
-      quizzes,
-      totalCount: quizzes.length,
-      hasMore: quizzes.length === Number(limit),
+      quizzes: limitedQuizzes,
+      totalCount: limitedQuizzes.length,
+      hasMore: limitedQuizzes.length === Number(limit),
     });
   } catch (error) {
     console.error("公開クイズの取得エラー:", error);

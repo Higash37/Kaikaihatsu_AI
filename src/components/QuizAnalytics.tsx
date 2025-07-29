@@ -1,4 +1,3 @@
-import React, { useState, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -12,6 +11,13 @@ import {
   Divider,
   Alert,
   LinearProgress,
+  IconButton,
+  Menu,
+  MenuItem,
+  Modal,
+  Backdrop,
+  Fade,
+  ButtonGroup,
 } from "@mui/material";
 import {
   Chart as ChartJS,
@@ -28,7 +34,10 @@ import {
   LineController,
   RadialLinearScale,
 } from "chart.js";
+import React, { useState, useMemo } from "react";
 import { Bar, Pie, Scatter, Line, Radar } from "react-chartjs-2";
+import { BarChart, PieChart, ShowChart, BubbleChart, Timeline, Close, Fullscreen, FilterList } from '@mui/icons-material';
+
 import { Axis } from "@/types/quiz";
 
 ChartJS.register(
@@ -61,6 +70,8 @@ interface FilterOptions {
   responseDate: string;
 }
 
+type ChartType = 'bar' | 'pie' | 'line' | 'stats';
+
 export default function QuizAnalytics({
   quizId,
   quizTitle,
@@ -75,6 +86,50 @@ export default function QuizAnalytics({
     location: "all",
     responseDate: "all",
   });
+  const [chartTypes, setChartTypes] = useState<{ [key: string]: ChartType }>({
+    overall: 'pie',
+    questions: 'bar'
+  });
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+  const [isScrolling, setIsScrolling] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalContent, setModalContent] = useState<{
+    title: string;
+    subtitle?: string;
+    chartType: 'pie' | 'bar' | 'line' | 'radar' | 'scatter';
+    data: any;
+    options: any;
+    questionId?: string;
+  } | null>(null);
+
+  // ウィンドウサイズの変更を検知
+  React.useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // スクロール検知
+  React.useEffect(() => {
+    let scrollTimeout: NodeJS.Timeout;
+    
+    const handleScroll = () => {
+      setIsScrolling(true);
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        setIsScrolling(false);
+      }, 1000); // スクロール停止後1秒で元に戻す
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      clearTimeout(scrollTimeout);
+    };
+  }, []);
 
   // 年齢範囲のプリセット
   const ageRanges = [
@@ -138,6 +193,32 @@ export default function QuizAnalytics({
 
   // 回答数の集計
   const totalResponses = filteredResponses.length;
+
+  // モーダルを開く関数
+  const openModal = (
+    title: string,
+    subtitle: string,
+    chartType: 'pie' | 'bar' | 'line' | 'radar' | 'scatter',
+    data: any,
+    options: any,
+    questionId?: string
+  ) => {
+    setModalContent({
+      title,
+      subtitle,
+      chartType,
+      data,
+      options,
+      questionId
+    });
+    setModalOpen(true);
+  };
+
+  // モーダルを閉じる関数
+  const closeModal = () => {
+    setModalOpen(false);
+    setModalContent(null);
+  };
 
   // 統計計算関数
   const calculateStatistics = (values: number[]) => {
@@ -239,18 +320,18 @@ export default function QuizAnalytics({
             distribution[5],
           ],
           backgroundColor: [
-            "rgba(255, 99, 132, 0.8)",
-            "rgba(255, 159, 64, 0.8)",
-            "rgba(255, 205, 86, 0.8)",
-            "rgba(75, 192, 192, 0.8)",
-            "rgba(54, 162, 235, 0.8)",
+            "rgba(102, 126, 234, 0.2)",
+            "rgba(102, 126, 234, 0.4)",
+            "rgba(102, 126, 234, 0.6)",
+            "rgba(102, 126, 234, 0.8)",
+            "rgba(102, 126, 234, 1.0)",
           ],
           borderColor: [
-            "rgba(255, 99, 132, 1)",
-            "rgba(255, 159, 64, 1)",
-            "rgba(255, 205, 86, 1)",
-            "rgba(75, 192, 192, 1)",
-            "rgba(54, 162, 235, 1)",
+            "rgba(102, 126, 234, 0.4)",
+            "rgba(102, 126, 234, 0.6)",
+            "rgba(102, 126, 234, 0.8)",
+            "rgba(102, 126, 234, 1.0)",
+            "rgba(90, 103, 216, 1.0)",
           ],
           borderWidth: 1,
           barPercentage: 0.8,
@@ -290,6 +371,186 @@ export default function QuizAnalytics({
           pointRadius: 6,
         },
       ],
+    };
+  };
+
+  // 2軸座標グラフデータ（診断結果プロット）
+  const getCoordinateGraphData = () => {
+    const axes = quizData?.axes || [];
+    if (axes.length < 2) return null;
+
+    const data = filteredResponses
+      .map((response) => {
+        if (!response.result_data?.coordinates) return null;
+        return {
+          x: response.result_data.coordinates.x || 0,
+          y: response.result_data.coordinates.y || 0,
+          label: response.user_id?.substring(0, 8) || 'Anonymous'
+        };
+      })
+      .filter(Boolean);
+
+    return {
+      datasets: [
+        {
+          label: '回答者の分布',
+          data: data,
+          backgroundColor: "rgba(102, 126, 234, 0.6)",
+          borderColor: "rgba(102, 126, 234, 1)",
+          borderWidth: 1,
+          pointRadius: 8,
+        },
+      ],
+    };
+  };
+
+  // 4軸座標グラフデータ （レーダーチャート風の4軸表示）
+  const get4AxisCoordinateData = () => {
+    const axes = quizData?.axes || [];
+    if (axes.length < 4) return null;
+
+    // 各回答者の4軸スコアを計算
+    const responseData = filteredResponses.map((response, index) => {
+      const axisScores = axes.map((axis: any) => {
+        // 各軸に対応する質問群のスコアを計算
+        const axisQuestions = questions.filter((q) => q.axisId === axis.id);
+        if (axisQuestions.length === 0) return 0;
+
+        const questionScores = axisQuestions.map((question) => {
+          const answer = response.answers?.find((a: any) => a.questionId === question.id);
+          return answer ? answer.value || 0 : 0;
+        });
+
+        return questionScores.reduce((sum, score) => sum + score, 0) / questionScores.length;
+      });
+
+      return {
+        label: `回答者${index + 1}`,
+        data: axisScores,
+        backgroundColor: `rgba(102, 126, 234, ${0.1 + (index % 10) * 0.05})`,
+        borderColor: `rgba(102, 126, 234, ${0.5 + (index % 10) * 0.05})`,
+        borderWidth: 1,
+        pointBackgroundColor: `rgba(102, 126, 234, ${0.7 + (index % 10) * 0.03})`,
+        pointBorderColor: '#fff',
+        pointRadius: 3,
+      };
+    });
+
+    return {
+      labels: axes.map((axis: any) => axis.name),
+      datasets: responseData.slice(0, 10) // 最大10人まで表示
+    };
+  };
+
+  // 4軸平均スコア比較データ
+  const get4AxisAverageData = () => {
+    const axes = quizData?.axes || [];
+    if (axes.length < 4) return null;
+
+    // 各軸の平均スコアを計算
+    const axisAverages = axes.map((axis: any) => {
+      const axisQuestions = questions.filter((q) => q.axisId === axis.id);
+      if (axisQuestions.length === 0) return 0;
+
+      const allScores = filteredResponses.flatMap((response) => {
+        return axisQuestions.map((question) => {
+          const answer = response.answers?.find((a: any) => a.questionId === question.id);
+          return answer ? answer.value || 0 : 0;
+        });
+      });
+
+      return allScores.length > 0 ? allScores.reduce((sum, score) => sum + score, 0) / allScores.length : 0;
+    });
+
+    return {
+      labels: axes.map((axis: any) => axis.name),
+      datasets: [
+        {
+          label: '平均スコア',
+          data: axisAverages,
+          backgroundColor: 'rgba(102, 126, 234, 0.3)',
+          borderColor: 'rgba(102, 126, 234, 1)',
+          borderWidth: 3,
+          pointBackgroundColor: 'rgba(102, 126, 234, 1)',
+          pointBorderColor: '#fff',
+          pointRadius: 6,
+          fill: true,
+        },
+        {
+          label: '理想値',
+          data: axes.map(() => 4), // 理想的なスコア4
+          backgroundColor: 'rgba(102, 126, 234, 0.1)',
+          borderColor: 'rgba(102, 126, 234, 0.5)',
+          borderWidth: 2,
+          borderDash: [5, 5],
+          pointBackgroundColor: 'rgba(102, 126, 234, 0.5)',
+          pointBorderColor: '#fff',
+          pointRadius: 4,
+          fill: false,
+        },
+      ],
+    };
+  };
+
+  // 高度な統計分析
+  const getAdvancedStatistics = () => {
+    const allValues = questions.map(q => {
+      const values = filteredResponses
+        .map(r => r.answers.find((a: any) => a.questionId === q.id)?.value)
+        .filter((v): v is number => v != null);
+      return { questionId: q.id, values };
+    });
+
+    // 歪度（Skewness）計算
+    const calculateSkewness = (values: number[]) => {
+      const stats = calculateStatistics(values);
+      if (stats.std === 0) return 0;
+      const n = values.length;
+      const skew = values.reduce((sum, v) => sum + Math.pow((v - stats.mean) / stats.std, 3), 0) / n;
+      return skew;
+    };
+
+    // 尖度（Kurtosis）計算
+    const calculateKurtosis = (values: number[]) => {
+      const stats = calculateStatistics(values);
+      if (stats.std === 0) return 0;
+      const n = values.length;
+      const kurt = values.reduce((sum, v) => sum + Math.pow((v - stats.mean) / stats.std, 4), 0) / n - 3;
+      return kurt;
+    };
+
+    // 信頼性係数（クロンバックのα）の簡易計算
+    const calculateCronbachAlpha = () => {
+      const k = questions.length;
+      if (k < 2) return 0;
+      
+      const itemVariances = allValues.map(({ values }) => {
+        const stats = calculateStatistics(values);
+        return stats.variance;
+      });
+      
+      const totalScores = filteredResponses.map(r => 
+        r.answers.reduce((sum: number, a: any) => sum + (a.value || 0), 0)
+      );
+      const totalVariance = calculateStatistics(totalScores).variance;
+      
+      const sumItemVariances = itemVariances.reduce((sum, v) => sum + v, 0);
+      const alpha = (k / (k - 1)) * (1 - sumItemVariances / totalVariance);
+      
+      return alpha;
+    };
+
+    return {
+      skewness: allValues.map(({ questionId, values }) => ({
+        questionId,
+        value: calculateSkewness(values)
+      })),
+      kurtosis: allValues.map(({ questionId, values }) => ({
+        questionId,
+        value: calculateKurtosis(values)
+      })),
+      cronbachAlpha: calculateCronbachAlpha(),
+      sampleSize: filteredResponses.length,
     };
   };
 
@@ -371,24 +632,24 @@ export default function QuizAnalytics({
         {
           label: "最大値",
           data: questionStats.map((stat) => stat.max),
-          borderColor: "rgba(255, 99, 132, 1)",
-          backgroundColor: "rgba(255, 99, 132, 0.2)",
+          borderColor: "rgba(102, 126, 234, 1)",
+          backgroundColor: "rgba(102, 126, 234, 0.2)",
           borderWidth: 2,
           borderDash: [5, 5],
           tension: 0.1,
-          pointBackgroundColor: "rgba(255, 99, 132, 1)",
+          pointBackgroundColor: "rgba(102, 126, 234, 1)",
           pointBorderColor: "#fff",
           pointRadius: 4,
         },
         {
           label: "最小値",
           data: questionStats.map((stat) => stat.min),
-          borderColor: "rgba(255, 159, 64, 1)",
-          backgroundColor: "rgba(255, 159, 64, 0.2)",
+          borderColor: "rgba(102, 126, 234, 0.7)",
+          backgroundColor: "rgba(102, 126, 234, 0.1)",
           borderWidth: 2,
           borderDash: [3, 3],
           tension: 0.1,
-          pointBackgroundColor: "rgba(255, 159, 64, 1)",
+          pointBackgroundColor: "rgba(102, 126, 234, 0.7)",
           pointBorderColor: "#fff",
           pointRadius: 4,
         },
@@ -454,14 +715,14 @@ export default function QuizAnalytics({
         {
           label: "全体平均",
           data: axes.map(() => 3), // 中央値
-          backgroundColor: "rgba(255, 99, 132, 0.1)",
-          borderColor: "rgba(255, 99, 132, 0.5)",
+          backgroundColor: "rgba(102, 126, 234, 0.1)",
+          borderColor: "rgba(102, 126, 234, 0.5)",
           borderWidth: 1,
           borderDash: [5, 5],
-          pointBackgroundColor: "rgba(255, 99, 132, 0.5)",
+          pointBackgroundColor: "rgba(102, 126, 234, 0.5)",
           pointBorderColor: "#fff",
           pointHoverBackgroundColor: "#fff",
-          pointHoverBorderColor: "rgba(255, 99, 132, 0.5)",
+          pointHoverBorderColor: "rgba(102, 126, 234, 0.5)",
         },
       ],
     };
@@ -510,18 +771,18 @@ export default function QuizAnalytics({
             distribution[5],
           ],
           backgroundColor: [
-            "rgba(255, 99, 132, 0.8)",
-            "rgba(255, 159, 64, 0.8)",
-            "rgba(255, 205, 86, 0.8)",
-            "rgba(75, 192, 192, 0.8)",
-            "rgba(54, 162, 235, 0.8)",
+            "rgba(102, 126, 234, 0.2)",
+            "rgba(102, 126, 234, 0.4)",
+            "rgba(102, 126, 234, 0.6)",
+            "rgba(102, 126, 234, 0.8)",
+            "rgba(102, 126, 234, 1.0)",
           ],
           borderColor: [
-            "rgba(255, 99, 132, 1)",
-            "rgba(255, 159, 64, 1)",
-            "rgba(255, 205, 86, 1)",
-            "rgba(75, 192, 192, 1)",
-            "rgba(54, 162, 235, 1)",
+            "rgba(102, 126, 234, 0.4)",
+            "rgba(102, 126, 234, 0.6)",
+            "rgba(102, 126, 234, 0.8)",
+            "rgba(102, 126, 234, 1.0)",
+            "rgba(90, 103, 216, 1.0)",
           ],
           borderWidth: 1,
         },
@@ -529,15 +790,49 @@ export default function QuizAnalytics({
     };
   };
 
+  // 統計サマリー用のデータ作成（箱ひげ図の代替）
+  const getStatsSummaryData = (questionId: string) => {
+    const { stats, values } = getQuestionAnalytics(questionId);
+    const sorted = [...values].sort((a, b) => a - b);
+    const q1 = sorted[Math.floor(sorted.length * 0.25)] || 0;
+    const q3 = sorted[Math.floor(sorted.length * 0.75)] || 0;
+    
+    return {
+      labels: ['最小値', '第1四分位', '中央値', '第3四分位', '最大値'],
+      datasets: [{
+        label: '統計値',
+        data: [
+          Math.min(...values) || 0,
+          q1,
+          stats.median,
+          q3,
+          Math.max(...values) || 0
+        ],
+        backgroundColor: 'rgba(54, 162, 235, 0.5)',
+        borderColor: 'rgba(54, 162, 235, 1)',
+        borderWidth: 2,
+        tension: 0.4,
+        fill: false,
+      }]
+    };
+  };
+
   const chartOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: {
         position: "top" as const,
+        labels: {
+          padding: 10,
+          font: {
+            size: 11
+          },
+          boxWidth: 12,
+        }
       },
       title: {
-        display: true,
-        text: "回答分布",
+        display: false,
       },
     },
     scales: {
@@ -545,13 +840,21 @@ export default function QuizAnalytics({
         beginAtZero: true,
         ticks: {
           stepSize: 1,
+          font: {
+            size: 10
+          }
         },
-        // 動的なスケール調整
         suggestedMin: 0,
-        suggestedMax: undefined, // 自動調整
+        suggestedMax: undefined,
       },
       x: {
         ticks: {
+          font: {
+            size: 9
+          },
+          autoSkip: false,
+          maxRotation: 45,
+          minRotation: 0,
           callback: function (value: any, index: number) {
             const labels = [
               "そう思わない",
@@ -560,6 +863,11 @@ export default function QuizAnalytics({
               "ややそう思う",
               "そう思う",
             ];
+            // モバイルでは短縮表示
+            if (windowWidth < 600) {
+              const shortLabels = ["1", "2", "3", "4", "5"];
+              return shortLabels[index] || value;
+            }
             return labels[index] || value;
           },
         },
@@ -569,76 +877,149 @@ export default function QuizAnalytics({
 
   const pieChartOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: "bottom" as const,
+        position: windowWidth < 768 ? "bottom" as const : "right" as const,
+        labels: {
+          padding: windowWidth < 768 ? 10 : 20,
+          font: {
+            size: windowWidth < 768 ? 10 : 12
+          },
+          boxWidth: windowWidth < 768 ? 12 : 16,
+        }
       },
       title: {
-        display: true,
-        text: "全体の回答傾向",
+        display: false,
       },
     },
   };
 
+
   const scatterChartOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: {
+        display: windowWidth >= 768,
         position: "top" as const,
+        labels: {
+          font: {
+            size: 10
+          }
+        }
       },
       title: {
         display: true,
-        text: "質問間の相関分析",
+        text: windowWidth < 768 ? "相関分析" : "質問間の相関分析",
+        font: {
+          size: windowWidth < 768 ? 12 : 14
+        }
       },
     },
     scales: {
       x: {
         title: {
-          display: true,
-          text: questions[0]?.text || "質問1",
+          display: windowWidth >= 768,
+          text: questions[0]?.text?.substring(0, 20) + "..." || "質問1",
+          font: {
+            size: 10
+          }
         },
         min: 0,
         max: 6,
+        ticks: {
+          font: {
+            size: 9
+          }
+        }
       },
       y: {
         title: {
-          display: true,
-          text: questions[1]?.text || "質問2",
+          display: windowWidth >= 768,
+          text: questions[1]?.text?.substring(0, 20) + "..." || "質問2",
+          font: {
+            size: 10
+          }
         },
         min: 0,
         max: 6,
+        ticks: {
+          font: {
+            size: 9
+          }
+        }
       },
     },
   };
 
   const timeSeriesOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: {
         position: "top" as const,
+        labels: {
+          font: {
+            size: windowWidth < 768 ? 10 : 12
+          }
+        }
       },
       title: {
         display: true,
-        text: "回答の時間推移",
+        text: windowWidth < 768 ? "時間推移" : "回答の時間推移",
+        font: {
+          size: windowWidth < 768 ? 12 : 14
+        }
       },
     },
     scales: {
       y: {
         beginAtZero: true,
         max: 5,
+        ticks: {
+          font: {
+            size: windowWidth < 768 ? 9 : 11
+          }
+        }
       },
+      x: {
+        ticks: {
+          font: {
+            size: windowWidth < 768 ? 8 : 10
+          },
+          maxRotation: windowWidth < 768 ? 45 : 0,
+          callback: function(value: any, index: number, values: any[]) {
+            if (windowWidth < 768) {
+              // モバイルでは日付を短縮
+              return index % 2 === 0 ? value : '';
+            }
+            return value;
+          }
+        }
+      }
     },
   };
 
   const questionStatsOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: "top" as const,
+        position: windowWidth < 768 ? "bottom" as const : "top" as const,
+        labels: {
+          font: {
+            size: windowWidth < 768 ? 9 : 11
+          },
+          boxWidth: windowWidth < 768 ? 10 : 15,
+        }
       },
       title: {
         display: true,
-        text: "質問別統計 - 平均値・最大値・最小値",
+        text: windowWidth < 768 ? "質問別統計" : "質問別統計 - 平均値・最大値・最小値",
+        font: {
+          size: windowWidth < 768 ? 12 : 14
+        }
       },
     },
     scales: {
@@ -648,18 +1029,27 @@ export default function QuizAnalytics({
         min: 0,
         ticks: {
           stepSize: 1,
+          font: {
+            size: windowWidth < 768 ? 9 : 11
+          }
         },
       },
       x: {
         ticks: {
-          maxRotation: 45,
-          minRotation: 0,
+          maxRotation: windowWidth < 768 ? 90 : 45,
+          minRotation: windowWidth < 768 ? 45 : 0,
+          font: {
+            size: windowWidth < 768 ? 8 : 10
+          },
           callback: function (value: any, index: number) {
+            if (windowWidth < 768) {
+              // モバイルでは質問番号のみ
+              return `Q${index + 1}`;
+            }
             const labels = questions.map((q, i) => {
-              // 質問文が長い場合は短縮
               const shortText =
                 q.text.length > 20 ? q.text.substring(0, 20) + "..." : q.text;
-              return `質問${i + 1}\n${shortText}`;
+              return `質問${i + 1}`;
             });
             return labels[index] || value;
           },
@@ -670,13 +1060,22 @@ export default function QuizAnalytics({
 
   const radarChartOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: {
         position: "top" as const,
+        labels: {
+          font: {
+            size: windowWidth < 768 ? 10 : 12
+          }
+        }
       },
       title: {
         display: true,
-        text: "4軸レーダーチャート - 質問別平均スコア",
+        text: "4軸レーダーチャート",
+        font: {
+          size: windowWidth < 768 ? 14 : 16
+        }
       },
     },
     scales: {
@@ -686,10 +1085,13 @@ export default function QuizAnalytics({
         min: 0,
         ticks: {
           stepSize: 1,
+          font: {
+            size: windowWidth < 768 ? 9 : 11
+          }
         },
         pointLabels: {
           font: {
-            size: 12,
+            size: windowWidth < 768 ? 10 : 12,
           },
         },
       },
@@ -699,11 +1101,11 @@ export default function QuizAnalytics({
   // データがない場合でもグラフを表示するため、条件分岐を削除
 
   return (
-    <Box sx={{ p: 3, pb: 20 }}>
+    <Box sx={{ pb: { xs: '140px', sm: '160px' } }}>
       <Typography
         variant="h4"
         component="h1"
-        sx={{ mb: 3, fontWeight: "bold" }}
+        sx={{ mb: 1.5, fontWeight: "bold", fontSize: { xs: '1.5rem', sm: '2rem' } }}
       >
         {quizTitle} - 分析結果
       </Typography>
@@ -721,21 +1123,34 @@ export default function QuizAnalytics({
         </ToggleButtonGroup>
       </Box>
 
-      {/* フィルター（フッターより上に固定） */}
+      {/* フィルター（フッターより上に固定） - モーダル開いてる時は非表示 */}
       <Box
         sx={{
           position: "fixed",
-          bottom: "60px", // フッターの高さ分上に配置
+          bottom: { xs: "56px", sm: "60px" },
           left: 0,
           right: 0,
           zIndex: 9999,
-          height: "60px", // フッターと同じくらいの高さ
+          minHeight: { xs: "70px", sm: "60px" },
           backgroundColor: "#ffffff",
           borderTop: 1,
           borderColor: "divider",
-          display: "flex",
+          display: modalOpen ? "none" : "flex",
           alignItems: "center",
-          padding: "0 16px",
+          padding: { xs: "8px 12px", sm: "0 16px" },
+          overflowX: "auto",
+          opacity: isScrolling ? 0.3 : 1,
+          transition: "opacity 0.3s ease-in-out",
+          "&:hover": {
+            opacity: 1,
+          },
+          "&::-webkit-scrollbar": {
+            height: "4px",
+          },
+          "&::-webkit-scrollbar-thumb": {
+            backgroundColor: "rgba(0,0,0,0.2)",
+            borderRadius: "2px",
+          },
         }}
       >
         <Box
@@ -924,18 +1339,18 @@ export default function QuizAnalytics({
       </Box>
 
       {/* 基本統計 */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography variant="h6" sx={{ mb: 2 }}>
+      <Card sx={{ mb: 1.5, boxShadow: 1 }}>
+        <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+          <Typography variant="h6" sx={{ mb: 1.5, fontSize: { xs: '0.9rem', sm: '1rem' } }}>
             基本統計
           </Typography>
-          <Grid container spacing={2}>
+          <Grid container spacing={{ xs: 1, sm: 2 }}>
             <Grid item xs={6} md={3}>
               <Box sx={{ textAlign: "center" }}>
                 <Typography
-                  variant="h4"
+                  variant="h5"
                   color="primary.main"
-                  sx={{ fontWeight: "bold" }}
+                  sx={{ fontWeight: "bold", fontSize: { xs: "1.5rem", sm: "1.75rem" } }}
                 >
                   {totalResponses}
                 </Typography>
@@ -947,7 +1362,7 @@ export default function QuizAnalytics({
             <Grid item xs={6} md={3}>
               <Box sx={{ textAlign: "center" }}>
                 <Typography
-                  variant="h4"
+                  variant="h5"
                   color="secondary.main"
                   sx={{ fontWeight: "bold" }}
                 >
@@ -961,7 +1376,7 @@ export default function QuizAnalytics({
             <Grid item xs={6} md={3}>
               <Box sx={{ textAlign: "center" }}>
                 <Typography
-                  variant="h4"
+                  variant="h5"
                   color="success.main"
                   sx={{ fontWeight: "bold" }}
                 >
@@ -975,7 +1390,7 @@ export default function QuizAnalytics({
             <Grid item xs={6} md={3}>
               <Box sx={{ textAlign: "center" }}>
                 <Typography
-                  variant="h4"
+                  variant="h5"
                   color="info.main"
                   sx={{ fontWeight: "bold" }}
                 >
@@ -992,9 +1407,9 @@ export default function QuizAnalytics({
 
       {/* 高度分析の統計情報 */}
       {viewMode === "advanced" && (
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Typography variant="h6" sx={{ mb: 2 }}>
+        <Card sx={{ mb: 1.5, boxShadow: 1 }}>
+          <CardContent sx={{ p: 2 }}>
+            <Typography variant="h6" sx={{ mb: 1.5 }}>
               高度統計情報
             </Typography>
             <Grid container spacing={2}>
@@ -1043,118 +1458,1275 @@ export default function QuizAnalytics({
         </Card>
       )}
 
-      {/* 全体の回答傾向（円グラフ） */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            全体の回答傾向
-          </Typography>
-          <Box sx={{ height: 400, display: "flex", justifyContent: "center" }}>
-            <Pie data={getPieChartData()} options={pieChartOptions} />
-          </Box>
-        </CardContent>
-      </Card>
-
-      {/* 高度分析の追加グラフ */}
-      {viewMode === "advanced" && (
-        <>
-          {/* 相関分析（散布図） */}
-          {questions.length >= 2 && (
-            <Card sx={{ mb: 3 }}>
-              <CardContent>
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  質問間の相関分析
-                </Typography>
-                <Box sx={{ height: 400 }}>
-                  <Scatter
-                    data={getScatterChartData()!}
-                    options={scatterChartOptions}
-                  />
+      {/* メイングラフセクション（2列レイアウト） */}
+      <Grid container spacing={{ xs: 1, sm: 2 }}>
+        {/* 全体の回答傾向 */}
+        <Grid item xs={12} md={6}>
+          <Card sx={{ mb: 1.5, boxShadow: 2, height: '100%' }}>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 }, height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                mb: 1.5,
+                flexWrap: 'wrap',
+                gap: 1
+              }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Box sx={{ 
+                    width: 24, 
+                    height: 24, 
+                    borderRadius: '50%',
+                    background: 'linear-gradient(45deg, #667eea, #764ba2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <PieChart sx={{ fontSize: 14, color: 'white' }} />
+                  </Box>
+                  <Typography variant="h6" sx={{ fontSize: { xs: '0.9rem', sm: '1rem' }, fontWeight: 600 }}>
+                    全体の回答傾向
+                  </Typography>
                 </Box>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* 4軸レーダーチャート */}
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                4軸レーダーチャート - 質問別分析
+                <ToggleButtonGroup
+                  value={chartTypes.overall}
+                  exclusive
+                  onChange={(_, newType) => newType && setChartTypes(prev => ({ ...prev, overall: newType }))}
+                  size="small"
+                  sx={{
+                    '& .MuiToggleButton-root': {
+                      border: '1px solid #667eea',
+                      color: '#667eea',
+                      '&.Mui-selected': {
+                        backgroundColor: '#667eea',
+                        color: 'white',
+                        '&:hover': {
+                          backgroundColor: '#5a67d8',
+                        }
+                      },
+                      '&:hover': {
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                      }
+                    }
+                  }}
+                >
+                  <ToggleButton value="pie" aria-label="pie chart">
+                    <PieChart fontSize="small" />
+                  </ToggleButton>
+                  <ToggleButton value="bar" aria-label="bar chart">
+                    <BarChart fontSize="small" />
+                  </ToggleButton>
+                  <ToggleButton value="line" aria-label="line chart">
+                    <ShowChart fontSize="small" />
+                  </ToggleButton>
+                </ToggleButtonGroup>
+              </Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, fontSize: '0.8rem' }}>
+                回答者の選択傾向を可視化
               </Typography>
-              <Box sx={{ height: 400 }}>
+              <Box sx={{ 
+                height: { xs: 250, sm: 280, md: 320 }, 
+                position: 'relative',
+                flexGrow: 1,
+                background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                borderRadius: 2,
+                p: 1,
+                cursor: 'pointer',
+                '&:hover': {
+                  boxShadow: 'inset 0 0 10px rgba(102, 126, 234, 0.2)',
+                  transition: 'box-shadow 0.3s ease'
+                }
+              }}
+              onClick={() => {
+                const data = chartTypes.overall === 'pie' ? getPieChartData() : 
+                            chartTypes.overall === 'bar' ? {
+                              labels: ["そう思わない", "ややそう思わない", "どちらでもない", "ややそう思う", "そう思う"],
+                              datasets: [{
+                                label: "回答数",
+                                data: (() => {
+                                  const pieData = getPieChartData();
+                                  return pieData.datasets[0].data;
+                                })(),
+                                backgroundColor: [
+                                  "rgba(102, 126, 234, 0.2)",
+                                  "rgba(102, 126, 234, 0.4)",
+                                  "rgba(102, 126, 234, 0.6)",
+                                  "rgba(102, 126, 234, 0.8)",
+                                  "rgba(102, 126, 234, 1.0)",
+                                ],
+                                borderColor: [
+                                  "rgba(102, 126, 234, 0.4)",
+                                  "rgba(102, 126, 234, 0.6)",
+                                  "rgba(102, 126, 234, 0.8)",
+                                  "rgba(102, 126, 234, 1.0)",
+                                  "rgba(90, 103, 216, 1.0)",
+                                ],
+                                borderWidth: 1,
+                              }]
+                            } : getTimeSeriesData();
+                const options = chartTypes.overall === 'pie' ? pieChartOptions : 
+                               chartTypes.overall === 'bar' ? chartOptions : timeSeriesOptions;
+                openModal(
+                  '全体の回答傾向',
+                  '回答者の選択傾向を可視化',
+                  chartTypes.overall === 'line' ? 'line' : chartTypes.overall,
+                  data,
+                  options
+                );
+              }}
+              >
+                <IconButton 
+                  sx={{ 
+                    position: 'absolute', 
+                    top: 8, 
+                    right: 8, 
+                    zIndex: 1,
+                    backgroundColor: 'rgba(255,255,255,0.8)',
+                    '&:hover': {
+                      backgroundColor: 'rgba(255,255,255,0.9)',
+                    }
+                  }}
+                  size="small"
+                >
+                  <Fullscreen fontSize="small" />
+                </IconButton>
+                {chartTypes.overall === 'pie' && <Pie data={getPieChartData()} options={pieChartOptions} />}
+                {chartTypes.overall === 'bar' && (
+                  <Bar 
+                    data={{
+                      labels: ["そう思わない", "ややそう思わない", "どちらでもない", "ややそう思う", "そう思う"],
+                      datasets: [{
+                        label: "回答数",
+                        data: (() => {
+                          const pieData = getPieChartData();
+                          return pieData.datasets[0].data;
+                        })(),
+                        backgroundColor: [
+                          "rgba(102, 126, 234, 0.2)",
+                          "rgba(102, 126, 234, 0.4)",
+                          "rgba(102, 126, 234, 0.6)",
+                          "rgba(102, 126, 234, 0.8)",
+                          "rgba(102, 126, 234, 1.0)",
+                        ],
+                        borderColor: [
+                          "rgba(102, 126, 234, 0.4)",
+                          "rgba(102, 126, 234, 0.6)",
+                          "rgba(102, 126, 234, 0.8)",
+                          "rgba(102, 126, 234, 1.0)",
+                          "rgba(90, 103, 216, 1.0)",
+                        ],
+                        borderWidth: 1,
+                      }]
+                    }} 
+                    options={chartOptions} 
+                  />
+                )}
+                {chartTypes.overall === 'line' && <Line data={getTimeSeriesData()} options={timeSeriesOptions} />}
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* 4軸レーダーチャート */}
+        <Grid item xs={12} md={6}>
+          <Card sx={{ mb: 1.5, boxShadow: 2, height: '100%' }}>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 }, height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
+                <Box sx={{ 
+                  width: 24, 
+                  height: 24, 
+                  borderRadius: '50%',
+                  background: 'linear-gradient(45deg, #667eea, #764ba2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <ShowChart sx={{ fontSize: 14, color: 'white' }} />
+                </Box>
+                <Typography variant="h6" sx={{ fontSize: { xs: '0.9rem', sm: '1rem' }, fontWeight: 600 }}>
+                  4軸レーダーチャート
+                </Typography>
+              </Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, fontSize: '0.8rem' }}>
+                軸別の平均スコア比較
+              </Typography>
+              <Box sx={{ 
+                height: { xs: 250, sm: 280, md: 320 }, 
+                position: 'relative',
+                flexGrow: 1,
+                background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                borderRadius: 2,
+                p: 1,
+                cursor: 'pointer',
+                '&:hover': {
+                  boxShadow: 'inset 0 0 10px rgba(102, 126, 234, 0.2)',
+                  transition: 'box-shadow 0.3s ease'
+                }
+              }}
+              onClick={() => {
+                openModal(
+                  '4軸レーダーチャート',
+                  '軸別の平均スコア比較',
+                  'radar',
+                  getRadarChartData(),
+                  radarChartOptions
+                );
+              }}
+              >
+                <IconButton 
+                  sx={{ 
+                    position: 'absolute', 
+                    top: 8, 
+                    right: 8, 
+                    zIndex: 1,
+                    backgroundColor: 'rgba(255,255,255,0.8)',
+                    '&:hover': {
+                      backgroundColor: 'rgba(255,255,255,0.9)',
+                    }
+                  }}
+                  size="small"
+                >
+                  <Fullscreen fontSize="small" />
+                </IconButton>
                 <Radar data={getRadarChartData()} options={radarChartOptions} />
               </Box>
             </CardContent>
           </Card>
+        </Grid>
+      </Grid>
 
-          {/* 質問別統計（線グラフ） */}
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                質問別統計 - 平均値・最大値・最小値
-              </Typography>
-              <Box sx={{ height: 400 }}>
-                <Line
-                  data={getQuestionStatsData()}
-                  options={questionStatsOptions}
-                />
-              </Box>
-            </CardContent>
-          </Card>
+      {/* 高度分析の追加グラフ（2軸座標・相関分析 2列レイアウト） */}
+      {viewMode === "advanced" && (
+        <>
+          <Grid container spacing={{ xs: 1, sm: 2 }}>
+            {/* 2軸座標グラフ（診断結果プロット） */}
+            {quizData?.axes?.length >= 2 && (
+              <Grid item xs={12} md={6}>
+                <Card sx={{ mb: 1.5, boxShadow: 2, height: '100%' }}>
+                  <CardContent sx={{ p: { xs: 1.5, sm: 2 }, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
+                      <Box sx={{ 
+                        width: 24, 
+                        height: 24, 
+                        borderRadius: '50%',
+                        background: 'linear-gradient(45deg, #ff6b6b, #ff8e53)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
+                        <BubbleChart sx={{ fontSize: 14, color: 'white' }} />
+                      </Box>
+                      <Typography variant="h6" sx={{ fontSize: { xs: '0.9rem', sm: '1rem' }, fontWeight: 600 }}>
+                        診断結果マップ
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, fontSize: '0.8rem' }}>
+                      {quizData.axes[0]?.name || 'X軸'} × {quizData.axes[1]?.name || 'Y軸'}
+                    </Typography>
+                    <Box sx={{ 
+                      height: { xs: 250, sm: 280, md: 320 }, 
+                      position: 'relative',
+                      flexGrow: 1,
+                      background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+                      borderRadius: 2,
+                      p: 1,
+                      cursor: 'pointer',
+                      '&:hover': {
+                        boxShadow: 'inset 0 0 10px rgba(102, 126, 234, 0.2)',
+                        transition: 'box-shadow 0.3s ease'
+                      }
+                    }}
+                    onClick={() => {
+                      const scatterOptions = {
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: {
+                            legend: {
+                              display: true,
+                              position: 'top' as const,
+                              labels: {
+                                font: { size: 11, weight: '500' },
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                boxWidth: 8,
+                                padding: 15
+                              }
+                            },
+                            tooltip: {
+                              backgroundColor: 'rgba(0,0,0,0.8)',
+                              titleColor: 'white',
+                              bodyColor: 'white',
+                              borderColor: '#ff6b6b',
+                              borderWidth: 1,
+                              cornerRadius: 8,
+                              callbacks: {
+                                title: function(context: any) {
+                                  return `回答者: ${context[0].raw.label || 'Anonymous'}`;
+                                },
+                                label: function(context: any) {
+                                  return [`${quizData.axes[0]?.name || 'X軸'}: ${context.parsed.x}`, 
+                                         `${quizData.axes[1]?.name || 'Y軸'}: ${context.parsed.y}`];
+                                }
+                              }
+                            }
+                          },
+                          scales: {
+                            x: {
+                              title: {
+                                display: true,
+                                text: quizData.axes[0]?.name || 'X軸',
+                                font: { size: 13, weight: '600' },
+                                color: '#4a5568'
+                              },
+                              min: -100,
+                              max: 100,
+                              grid: {
+                                color: 'rgba(0,0,0,0.1)',
+                                lineWidth: 1
+                              },
+                              ticks: {
+                                stepSize: 50,
+                                font: { size: 11 },
+                                color: '#718096'
+                              }
+                            },
+                            y: {
+                              title: {
+                                display: true,
+                                text: quizData.axes[1]?.name || 'Y軸',
+                                font: { size: 13, weight: '600' },
+                                color: '#4a5568'
+                              },
+                              min: -100,
+                              max: 100,
+                              grid: {
+                                color: 'rgba(0,0,0,0.1)',
+                                lineWidth: 1
+                              },
+                              ticks: {
+                                stepSize: 50,
+                                font: { size: 11 },
+                                color: '#718096'
+                              }
+                            },
+                          },
+                        };
+                      openModal(
+                        '診断結果マップ',
+                        `${quizData.axes[0]?.name || 'X軸'} × ${quizData.axes[1]?.name || 'Y軸'}`,
+                        'scatter',
+                        getCoordinateGraphData()!,
+                        scatterOptions
+                      );
+                    }}
+                    >
+                      <IconButton 
+                        sx={{ 
+                          position: 'absolute', 
+                          top: 8, 
+                          right: 8, 
+                          zIndex: 1,
+                          backgroundColor: 'rgba(255,255,255,0.8)',
+                          '&:hover': {
+                            backgroundColor: 'rgba(255,255,255,0.9)',
+                          }
+                        }}
+                        size="small"
+                      >
+                        <Fullscreen fontSize="small" />
+                      </IconButton>
+                      <Scatter
+                        data={getCoordinateGraphData()!}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: {
+                            legend: {
+                              display: true,
+                              position: 'top' as const,
+                              labels: {
+                                font: { size: 11, weight: '500' },
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                boxWidth: 8,
+                                padding: 15
+                              }
+                            },
+                            tooltip: {
+                              backgroundColor: 'rgba(0,0,0,0.8)',
+                              titleColor: 'white',
+                              bodyColor: 'white',
+                              borderColor: '#ff6b6b',
+                              borderWidth: 1,
+                              cornerRadius: 8,
+                              callbacks: {
+                                title: function(context: any) {
+                                  return `回答者: ${context[0].raw.label || 'Anonymous'}`;
+                                },
+                                label: function(context: any) {
+                                  return [`${quizData.axes[0]?.name || 'X軸'}: ${context.parsed.x}`, 
+                                         `${quizData.axes[1]?.name || 'Y軸'}: ${context.parsed.y}`];
+                                }
+                              }
+                            }
+                          },
+                          scales: {
+                            x: {
+                              title: {
+                                display: true,
+                                text: quizData.axes[0]?.name || 'X軸',
+                                font: { size: windowWidth < 768 ? 11 : 13, weight: '600' },
+                                color: '#4a5568'
+                              },
+                              min: -100,
+                              max: 100,
+                              grid: {
+                                color: 'rgba(0,0,0,0.1)',
+                                lineWidth: 1
+                              },
+                              ticks: {
+                                stepSize: 50,
+                                font: { size: 10 },
+                                color: '#718096'
+                              }
+                            },
+                            y: {
+                              title: {
+                                display: true,
+                                text: quizData.axes[1]?.name || 'Y軸',
+                                font: { size: windowWidth < 768 ? 11 : 13, weight: '600' },
+                                color: '#4a5568'
+                              },
+                              min: -100,
+                              max: 100,
+                              grid: {
+                                color: 'rgba(0,0,0,0.1)',
+                                lineWidth: 1
+                              },
+                              ticks: {
+                                stepSize: 50,
+                                font: { size: 10 },
+                                color: '#718096'
+                              }
+                            },
+                          },
+                        }}
+                      />
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            )}
 
-          {/* 時系列分析 */}
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                回答の時間推移
-              </Typography>
-              <Box sx={{ height: 400 }}>
-                <Line data={getTimeSeriesData()} options={timeSeriesOptions} />
-              </Box>
-            </CardContent>
-          </Card>
+            {/* 相関分析（散布図） */}
+            {questions.length >= 2 && (
+              <Grid item xs={12} md={6}>
+                <Card sx={{ mb: 1.5, boxShadow: 2, height: '100%' }}>
+                  <CardContent sx={{ p: { xs: 1.5, sm: 2 }, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
+                      <Box sx={{ 
+                        width: 24, 
+                        height: 24, 
+                        borderRadius: '50%',
+                        background: 'linear-gradient(45deg, #667eea, #764ba2)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
+                        <ShowChart sx={{ fontSize: 14, color: 'white' }} />
+                      </Box>
+                      <Typography variant="h6" sx={{ fontSize: { xs: '0.9rem', sm: '1rem' }, fontWeight: 600 }}>
+                        相関分析
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, fontSize: '0.8rem' }}>
+                      {questions[0]?.text?.substring(0, 30)}... × {questions[1]?.text?.substring(0, 30)}...
+                    </Typography>
+                    <Box sx={{ 
+                      height: { xs: 250, sm: 280, md: 320 }, 
+                      position: 'relative',
+                      flexGrow: 1,
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      borderRadius: 2,
+                      p: 1,
+                      cursor: 'pointer',
+                      '&:hover': {
+                        boxShadow: 'inset 0 0 10px rgba(255,255,255,0.2)',
+                        transition: 'box-shadow 0.3s ease'
+                      }
+                    }}
+                    onClick={() => {
+                      const correlationOptions = {
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: {
+                            legend: {
+                              display: true,
+                              position: 'top' as const,
+                              labels: {
+                                font: { size: 12, weight: '500' },
+                                color: 'white',
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                boxWidth: 8,
+                                padding: 15
+                              }
+                            },
+                            tooltip: {
+                              backgroundColor: 'rgba(255,255,255,0.95)',
+                              titleColor: '#2d3748',
+                              bodyColor: '#4a5568',
+                              borderColor: '#667eea',
+                              borderWidth: 2,
+                              cornerRadius: 8,
+                              callbacks: {
+                                title: function() {
+                                  return '質問間の相関';
+                                },
+                                label: function(context: any) {
+                                  return [`${questions[0]?.text?.substring(0, 25)}...: ${context.parsed.x}`, 
+                                         `${questions[1]?.text?.substring(0, 25)}...: ${context.parsed.y}`];
+                                }
+                              }
+                            }
+                          },
+                          scales: {
+                            x: {
+                              title: {
+                                display: true,
+                                text: questions[0]?.text?.substring(0, 30) + "..." || "質問1",
+                                font: { size: 12, weight: '600' },
+                                color: 'white'
+                              },
+                              min: 0,
+                              max: 6,
+                              grid: {
+                                color: 'rgba(255,255,255,0.2)',
+                                lineWidth: 1
+                              },
+                              ticks: {
+                                font: { size: 10 },
+                                color: 'rgba(255,255,255,0.8)',
+                                stepSize: 1
+                              }
+                            },
+                            y: {
+                              title: {
+                                display: true,
+                                text: questions[1]?.text?.substring(0, 30) + "..." || "質問2",
+                                font: { size: 12, weight: '600' },
+                                color: 'white'
+                              },
+                              min: 0,
+                              max: 6,
+                              grid: {
+                                color: 'rgba(255,255,255,0.2)',
+                                lineWidth: 1
+                              },
+                              ticks: {
+                                font: { size: 10 },
+                                color: 'rgba(255,255,255,0.8)',
+                                stepSize: 1
+                              }
+                            },
+                          },
+                        };
+                      openModal(
+                        '相関分析',
+                        `${questions[0]?.text?.substring(0, 30)}... × ${questions[1]?.text?.substring(0, 30)}...`,
+                        'scatter',
+                        getScatterChartData()!,
+                        correlationOptions
+                      );
+                    }}
+                    >
+                      <IconButton 
+                        sx={{ 
+                          position: 'absolute', 
+                          top: 8, 
+                          right: 8, 
+                          zIndex: 1,
+                          backgroundColor: 'rgba(255,255,255,0.2)',
+                          '&:hover': {
+                            backgroundColor: 'rgba(255,255,255,0.3)',
+                          }
+                        }}
+                        size="small"
+                      >
+                        <Fullscreen fontSize="small" sx={{ color: 'white' }} />
+                      </IconButton>
+                      <Scatter
+                        data={getScatterChartData()!}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: {
+                            legend: {
+                              display: windowWidth >= 768,
+                              position: 'top' as const,
+                              labels: {
+                                font: { size: 10, weight: '500' },
+                                color: 'white',
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                boxWidth: 8,
+                                padding: 12
+                              }
+                            },
+                            tooltip: {
+                              backgroundColor: 'rgba(255,255,255,0.95)',
+                              titleColor: '#2d3748',
+                              bodyColor: '#4a5568',
+                              borderColor: '#667eea',
+                              borderWidth: 2,
+                              cornerRadius: 8,
+                              callbacks: {
+                                title: function() {
+                                  return '質問間の相関';
+                                },
+                                label: function(context: any) {
+                                  return [`${questions[0]?.text?.substring(0, 20)}...: ${context.parsed.x}`, 
+                                         `${questions[1]?.text?.substring(0, 20)}...: ${context.parsed.y}`];
+                                }
+                              }
+                            }
+                          },
+                          scales: {
+                            x: {
+                              title: {
+                                display: windowWidth >= 768,
+                                text: questions[0]?.text?.substring(0, 25) + "..." || "質問1",
+                                font: { size: windowWidth < 768 ? 10 : 11, weight: '600' },
+                                color: 'white'
+                              },
+                              min: 0,
+                              max: 6,
+                              grid: {
+                                color: 'rgba(255,255,255,0.2)',
+                                lineWidth: 1
+                              },
+                              ticks: {
+                                font: { size: 9 },
+                                color: 'rgba(255,255,255,0.8)',
+                                stepSize: 1
+                              }
+                            },
+                            y: {
+                              title: {
+                                display: windowWidth >= 768,
+                                text: questions[1]?.text?.substring(0, 25) + "..." || "質問2",
+                                font: { size: windowWidth < 768 ? 10 : 11, weight: '600' },
+                                color: 'white'
+                              },
+                              min: 0,
+                              max: 6,
+                              grid: {
+                                color: 'rgba(255,255,255,0.2)',
+                                lineWidth: 1
+                              },
+                              ticks: {
+                                font: { size: 9 },
+                                color: 'rgba(255,255,255,0.8)',
+                                stepSize: 1
+                              }
+                            },
+                          },
+                        }}
+                      />
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            )}
+          </Grid>
+
+          {/* 4軸座標グラフ（全軸の診断結果表示） */}
+          {quizData?.axes?.length >= 4 && (
+            <Card sx={{ mb: 1.5, boxShadow: 2 }}>
+              <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
+                  <Box sx={{ 
+                    width: 24, 
+                    height: 24, 
+                    borderRadius: '50%',
+                    background: 'linear-gradient(45deg, #667eea, #764ba2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <ShowChart sx={{ fontSize: 14, color: 'white' }} />
+                  </Box>
+                  <Typography variant="h6" sx={{ fontSize: { xs: '0.9rem', sm: '1rem' }, fontWeight: 600 }}>
+                    4軸診断結果（全体表示）
+                  </Typography>
+                </Box>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, fontSize: '0.8rem' }}>
+                  全4軸の診断結果を包括的に可視化
+                </Typography>
+                
+                <Grid container spacing={{ xs: 1, sm: 2 }}>
+                  {/* 個別回答者の4軸レーダーチャート */}
+                  <Grid item xs={12} md={6}>
+                    <Box sx={{ 
+                      height: { xs: 300, sm: 320, md: 350 }, 
+                      position: 'relative',
+                      background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                      borderRadius: 2,
+                      p: 1,
+                      cursor: 'pointer',
+                      '&:hover': {
+                        boxShadow: 'inset 0 0 10px rgba(102, 126, 234, 0.2)',
+                        transition: 'box-shadow 0.3s ease'
+                      }
+                    }}
+                    onClick={() => {
+                      const radarOptions = {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: {
+                            display: true,
+                            position: 'top' as const,
+                            labels: {
+                              font: { size: 11 },
+                              maxWidth: 150,
+                              generateLabels: function(chart: any) {
+                                const data = chart.data;
+                                if (data.datasets.length) {
+                                  return data.datasets.slice(0, 5).map((dataset: any, i: number) => ({
+                                    text: `回答者${i + 1}`,
+                                    fillStyle: dataset.backgroundColor,
+                                    strokeStyle: dataset.borderColor,
+                                    lineWidth: dataset.borderWidth,
+                                    hidden: false,
+                                    datasetIndex: i
+                                  }));
+                                }
+                                return [];
+                              }
+                            }
+                          },
+                          title: {
+                            display: true,
+                            text: '個別回答者の4軸分析',
+                            font: { size: 14, weight: '600' }
+                          },
+                          tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            titleColor: 'white',
+                            bodyColor: 'white',
+                            cornerRadius: 8,
+                          }
+                        },
+                        scales: {
+                          r: {
+                            beginAtZero: true,
+                            max: 5,
+                            min: 0,
+                            ticks: {
+                              stepSize: 1,
+                              font: { size: 10 }
+                            },
+                            pointLabels: {
+                              font: { size: 12, weight: '500' },
+                            },
+                            grid: {
+                              color: 'rgba(102, 126, 234, 0.2)',
+                            },
+                            angleLines: {
+                              color: 'rgba(102, 126, 234, 0.3)',
+                            }
+                          },
+                        },
+                      };
+                      openModal(
+                        '4軸診断結果（個別）',
+                        '各回答者の4軸レーダーチャート',
+                        'radar',
+                        get4AxisCoordinateData()!,
+                        radarOptions
+                      );
+                    }}
+                    >
+                      <IconButton 
+                        sx={{ 
+                          position: 'absolute', 
+                          top: 8, 
+                          right: 8, 
+                          zIndex: 1,
+                          backgroundColor: 'rgba(255,255,255,0.8)',
+                          '&:hover': {
+                            backgroundColor: 'rgba(255,255,255,0.9)',
+                          }
+                        }}
+                        size="small"
+                      >
+                        <Fullscreen fontSize="small" />
+                      </IconButton>
+                      <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                        <Typography variant="subtitle2" sx={{ mb: 1, textAlign: 'center', fontWeight: 600 }}>
+                          個別回答者の4軸分析
+                        </Typography>
+                        <Box sx={{ flex: 1 }}>
+                          <Radar 
+                            data={get4AxisCoordinateData()!} 
+                            options={{
+                              responsive: true,
+                              maintainAspectRatio: false,
+                              plugins: {
+                                legend: {
+                                  display: true,
+                                  position: 'bottom' as const,
+                                  labels: {
+                                    font: { size: 9 },
+                                    maxWidth: 80,
+                                    generateLabels: function(chart: any) {
+                                      const data = chart.data;
+                                      if (data.datasets.length) {
+                                        return data.datasets.slice(0, 5).map((dataset: any, i: number) => ({
+                                          text: `回答者${i + 1}`,
+                                          fillStyle: dataset.backgroundColor,
+                                          strokeStyle: dataset.borderColor,
+                                          lineWidth: dataset.borderWidth,
+                                          hidden: false,
+                                          datasetIndex: i
+                                        }));
+                                      }
+                                      return [];
+                                    }
+                                  }
+                                }
+                              },
+                              scales: {
+                                r: {
+                                  beginAtZero: true,
+                                  max: 5,
+                                  min: 0,
+                                  ticks: {
+                                    stepSize: 1,
+                                    font: { size: 8 },
+                                    display: false
+                                  },
+                                  pointLabels: {
+                                    font: { size: 10 },
+                                  },
+                                  grid: {
+                                    color: 'rgba(102, 126, 234, 0.2)',
+                                  },
+                                  angleLines: {
+                                    color: 'rgba(102, 126, 234, 0.3)',
+                                  }
+                                },
+                              },
+                            }} 
+                          />
+                        </Box>
+                      </Box>
+                    </Box>
+                  </Grid>
+
+                  {/* 4軸平均比較チャート */}
+                  <Grid item xs={12} md={6}>
+                    <Box sx={{ 
+                      height: { xs: 300, sm: 320, md: 350 }, 
+                      position: 'relative',
+                      background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                      borderRadius: 2,
+                      p: 1,
+                      cursor: 'pointer',
+                      '&:hover': {
+                        boxShadow: 'inset 0 0 10px rgba(102, 126, 234, 0.2)',
+                        transition: 'box-shadow 0.3s ease'
+                      }
+                    }}
+                    onClick={() => {
+                      const averageOptions = {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: {
+                            display: true,
+                            position: 'top' as const,
+                            labels: {
+                              font: { size: 12 }
+                            }
+                          },
+                          title: {
+                            display: true,
+                            text: '4軸平均スコア比較',
+                            font: { size: 14, weight: '600' }
+                          },
+                          tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            titleColor: 'white',
+                            bodyColor: 'white',
+                            cornerRadius: 8,
+                          }
+                        },
+                        scales: {
+                          r: {
+                            beginAtZero: true,
+                            max: 5,
+                            min: 0,
+                            ticks: {
+                              stepSize: 1,
+                              font: { size: 11 }
+                            },
+                            pointLabels: {
+                              font: { size: 13, weight: '500' },
+                            },
+                            grid: {
+                              color: 'rgba(102, 126, 234, 0.2)',
+                            },
+                            angleLines: {
+                              color: 'rgba(102, 126, 234, 0.3)',
+                            }
+                          },
+                        },
+                      };
+                      openModal(
+                        '4軸平均スコア比較',
+                        '全体の平均スコアと理想値の比較',
+                        'radar',
+                        get4AxisAverageData()!,
+                        averageOptions
+                      );
+                    }}
+                    >
+                      <IconButton 
+                        sx={{ 
+                          position: 'absolute', 
+                          top: 8, 
+                          right: 8, 
+                          zIndex: 1,
+                          backgroundColor: 'rgba(255,255,255,0.8)',
+                          '&:hover': {
+                            backgroundColor: 'rgba(255,255,255,0.9)',
+                          }
+                        }}
+                        size="small"
+                      >
+                        <Fullscreen fontSize="small" />
+                      </IconButton>
+                      <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                        <Typography variant="subtitle2" sx={{ mb: 1, textAlign: 'center', fontWeight: 600 }}>
+                          4軸平均スコア比較
+                        </Typography>
+                        <Box sx={{ flex: 1 }}>
+                          <Radar 
+                            data={get4AxisAverageData()!} 
+                            options={{
+                              responsive: true,
+                              maintainAspectRatio: false,
+                              plugins: {
+                                legend: {
+                                  display: true,
+                                  position: 'bottom' as const,
+                                  labels: {
+                                    font: { size: 10 }
+                                  }
+                                }
+                              },
+                              scales: {
+                                r: {
+                                  beginAtZero: true,
+                                  max: 5,
+                                  min: 0,
+                                  ticks: {
+                                    stepSize: 1,
+                                    font: { size: 8 },
+                                    display: true
+                                  },
+                                  pointLabels: {
+                                    font: { size: 10 },
+                                  },
+                                  grid: {
+                                    color: 'rgba(102, 126, 234, 0.2)',
+                                  },
+                                  angleLines: {
+                                    color: 'rgba(102, 126, 234, 0.3)',
+                                  }
+                                },
+                              },
+                            }} 
+                          />
+                        </Box>
+                      </Box>
+                    </Box>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* 高度分析グラフ（2列レイアウト） */}
+          <Grid container spacing={{ xs: 1, sm: 2 }}>
+            {/* 質問別統計 */}
+            <Grid item xs={12} md={6}>
+              <Card sx={{ mb: 1.5, boxShadow: 2, height: '100%' }}>
+                <CardContent sx={{ p: { xs: 1.5, sm: 2 }, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
+                    <Box sx={{ 
+                      width: 24, 
+                      height: 24, 
+                      borderRadius: '50%',
+                      background: 'linear-gradient(45deg, #667eea, #764ba2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <BarChart sx={{ fontSize: 14, color: 'white' }} />
+                    </Box>
+                    <Typography variant="h6" sx={{ fontSize: { xs: '0.9rem', sm: '1rem' }, fontWeight: 600 }}>
+                      質問別統計
+                    </Typography>
+                  </Box>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, fontSize: '0.8rem' }}>
+                    平均値・最大値・最小値の推移
+                  </Typography>
+                  <Box sx={{ 
+                    height: { xs: 250, sm: 280, md: 320 }, 
+                    position: 'relative', 
+                    flexGrow: 1,
+                    background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                    borderRadius: 2,
+                    p: 1,
+                    cursor: 'pointer',
+                    '&:hover': {
+                      boxShadow: 'inset 0 0 10px rgba(102, 126, 234, 0.2)',
+                      transition: 'box-shadow 0.3s ease'
+                    }
+                  }}
+                  onClick={() => {
+                    openModal(
+                      '質問別統計',
+                      '平均値・最大値・最小値の推移',
+                      'line',
+                      getQuestionStatsData(),
+                      questionStatsOptions
+                    );
+                  }}
+                  >
+                    <IconButton 
+                      sx={{ 
+                        position: 'absolute', 
+                        top: 8, 
+                        right: 8, 
+                        zIndex: 1,
+                        backgroundColor: 'rgba(255,255,255,0.8)',
+                        '&:hover': {
+                          backgroundColor: 'rgba(255,255,255,0.9)',
+                        }
+                      }}
+                      size="small"
+                    >
+                      <Fullscreen fontSize="small" />
+                    </IconButton>
+                    <Line
+                      data={getQuestionStatsData()}
+                      options={questionStatsOptions}
+                    />
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* 時系列分析 */}
+            <Grid item xs={12} md={6}>
+              <Card sx={{ mb: 1.5, boxShadow: 2, height: '100%' }}>
+                <CardContent sx={{ p: { xs: 1.5, sm: 2 }, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
+                    <Box sx={{ 
+                      width: 24, 
+                      height: 24, 
+                      borderRadius: '50%',
+                      background: 'linear-gradient(45deg, #667eea, #764ba2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Timeline sx={{ fontSize: 14, color: 'white' }} />
+                    </Box>
+                    <Typography variant="h6" sx={{ fontSize: { xs: '0.9rem', sm: '1rem' }, fontWeight: 600 }}>
+                      時系列分析
+                    </Typography>
+                  </Box>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, fontSize: '0.8rem' }}>
+                    回答スコアの時間推移
+                  </Typography>
+                  <Box sx={{ 
+                    height: { xs: 250, sm: 280, md: 320 }, 
+                    position: 'relative', 
+                    flexGrow: 1,
+                    background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                    borderRadius: 2,
+                    p: 1,
+                    cursor: 'pointer',
+                    '&:hover': {
+                      boxShadow: 'inset 0 0 10px rgba(102, 126, 234, 0.2)',
+                      transition: 'box-shadow 0.3s ease'
+                    }
+                  }}
+                  onClick={() => {
+                    openModal(
+                      '時系列分析',
+                      '回答スコアの時間推移',
+                      'line',
+                      getTimeSeriesData(),
+                      timeSeriesOptions
+                    );
+                  }}
+                  >
+                    <IconButton 
+                      sx={{ 
+                        position: 'absolute', 
+                        top: 8, 
+                        right: 8, 
+                        zIndex: 1,
+                        backgroundColor: 'rgba(255,255,255,0.8)',
+                        '&:hover': {
+                          backgroundColor: 'rgba(255,255,255,0.9)',
+                        }
+                      }}
+                      size="small"
+                    >
+                      <Fullscreen fontSize="small" />
+                    </IconButton>
+                    <Line data={getTimeSeriesData()} options={timeSeriesOptions} />
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
         </>
       )}
 
-      {/* 各質問の詳細分析（棒グラフ） */}
-      <Typography variant="h6" sx={{ mb: 2 }}>
-        質問別分析（回答分布）
-      </Typography>
-      <Grid container spacing={3}>
+      {/* 各質問の詳細分析（切り替え可能） */}
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        mb: 1.5,
+        flexWrap: 'wrap',
+        gap: 1
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Box sx={{ 
+            width: 24, 
+            height: 24, 
+            borderRadius: '50%',
+            background: 'linear-gradient(45deg, #667eea, #764ba2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <BarChart sx={{ fontSize: 14, color: 'white' }} />
+          </Box>
+          <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.1rem' }, fontWeight: 600 }}>
+            質問別分析
+          </Typography>
+        </Box>
+        <ToggleButtonGroup
+          value={chartTypes.questions}
+          exclusive
+          onChange={(_, newType) => newType && setChartTypes(prev => ({ ...prev, questions: newType }))}
+          size="small"
+          sx={{
+            '& .MuiToggleButton-root': {
+              border: '1px solid #667eea',
+              color: '#667eea',
+              '&.Mui-selected': {
+                backgroundColor: '#667eea',
+                color: 'white',
+                '&:hover': {
+                  backgroundColor: '#5a67d8',
+                }
+              },
+              '&:hover': {
+                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+              }
+            }
+          }}
+        >
+          <ToggleButton value="bar" aria-label="bar chart">
+            <BarChart fontSize="small" />
+          </ToggleButton>
+          <ToggleButton value="line" aria-label="line chart">
+            <ShowChart fontSize="small" />
+          </ToggleButton>
+          <ToggleButton value="stats" aria-label="statistics">
+            <Timeline fontSize="small" />
+          </ToggleButton>
+        </ToggleButtonGroup>
+      </Box>
+      <Grid container spacing={{ xs: 1, sm: 2 }}>
         {questions.map((question, index) => {
           const { stats } = getQuestionAnalytics(question.id);
           return (
-            <Grid item xs={12} md={6} lg={4} key={question.id}>
-              <Card>
-                <CardContent>
-                  <Typography
-                    variant="subtitle1"
-                    sx={{ mb: 2, fontWeight: "bold", fontSize: "0.9rem" }}
-                  >
-                    質問{index + 1}: {question.text}
-                  </Typography>
+            <Grid item xs={12} sm={6} md={4} lg={3} key={question.id}>
+              <Card sx={{ boxShadow: 2, height: '100%' }}>
+                <CardContent sx={{ 
+                  p: { xs: 1.5, sm: 2 },
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}>
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 1.5 }}>
+                    <Box sx={{ 
+                      width: 20, 
+                      height: 20, 
+                      borderRadius: '50%',
+                      background: 'linear-gradient(45deg, #667eea, #764ba2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      mt: 0.2
+                    }}>
+                      <Typography sx={{ fontSize: 10, color: 'white', fontWeight: 'bold' }}>
+                        {index + 1}
+                      </Typography>
+                    </Box>
+                    <Typography
+                      variant="subtitle2"
+                      sx={{ 
+                        fontWeight: 600, 
+                        fontSize: { xs: "0.75rem", sm: "0.85rem" }, 
+                        lineHeight: 1.3,
+                        flex: 1
+                      }}
+                    >
+                      {question.text}
+                    </Typography>
+                  </Box>
 
                   {/* 高度分析の統計情報 */}
                   {viewMode === "advanced" && (
-                    <Box sx={{ mb: 2 }}>
+                    <Box sx={{ 
+                      mb: 1.5, 
+                      p: 1, 
+                      backgroundColor: 'rgba(102, 126, 234, 0.05)', 
+                      borderRadius: 1,
+                      border: '1px solid rgba(102, 126, 234, 0.1)'
+                    }}>
                       <Grid container spacing={1}>
                         <Grid item xs={6}>
-                          <Typography variant="caption">
+                          <Typography variant="caption" sx={{ fontWeight: 500 }}>
                             平均: {stats.mean.toFixed(2)}
                           </Typography>
                         </Grid>
                         <Grid item xs={6}>
-                          <Typography variant="caption">
+                          <Typography variant="caption" sx={{ fontWeight: 500 }}>
                             標準偏差: {stats.std.toFixed(2)}
                           </Typography>
                         </Grid>
                         <Grid item xs={6}>
-                          <Typography variant="caption">
+                          <Typography variant="caption" sx={{ fontWeight: 500 }}>
                             中央値: {stats.median.toFixed(2)}
                           </Typography>
                         </Grid>
                         <Grid item xs={6}>
-                          <Typography variant="caption">
+                          <Typography variant="caption" sx={{ fontWeight: 500 }}>
                             分散: {stats.variance.toFixed(2)}
                           </Typography>
                         </Grid>
@@ -1162,11 +2734,110 @@ export default function QuizAnalytics({
                     </Box>
                   )}
 
-                  <Box sx={{ height: 250 }}>
-                    <Bar
-                      data={getBarChartData(question.id, question.text)}
-                      options={chartOptions}
-                    />
+                  <Box sx={{ 
+                    height: { xs: 160, sm: 180, md: 200 }, 
+                    position: 'relative',
+                    flexGrow: 1,
+                    minHeight: 0,
+                    background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                    borderRadius: 2,
+                    p: 1,
+                    cursor: 'pointer',
+                    '&:hover': {
+                      boxShadow: 'inset 0 0 10px rgba(102, 126, 234, 0.2)',
+                      transition: 'box-shadow 0.3s ease'
+                    }
+                  }}
+                  onClick={() => {
+                    const data = chartTypes.questions === 'stats' 
+                      ? getStatsSummaryData(question.id)
+                      : getBarChartData(question.id, question.text);
+                    const options = chartTypes.questions === 'stats' 
+                      ? { 
+                          ...chartOptions, 
+                          plugins: {
+                            ...chartOptions.plugins,
+                            legend: {
+                              display: true,
+                              position: 'top' as const,
+                            }
+                          },
+                          scales: {
+                            y: {
+                              beginAtZero: true,
+                              max: 5,
+                              ticks: {
+                                stepSize: 1,
+                              }
+                            }
+                          }
+                        }
+                      : chartTypes.questions === 'line' 
+                        ? { ...chartOptions, elements: { line: { tension: 0.4 } } }
+                        : chartOptions;
+                    openModal(
+                      `質問${index + 1}`,
+                      question.text,
+                      chartTypes.questions === 'stats' ? 'line' : chartTypes.questions === 'line' ? 'line' : 'bar',
+                      data,
+                      options,
+                      question.id
+                    );
+                  }}
+                  >
+                    <IconButton 
+                      sx={{ 
+                        position: 'absolute', 
+                        top: 4, 
+                        right: 4, 
+                        zIndex: 1,
+                        backgroundColor: 'rgba(255,255,255,0.8)',
+                        width: 20,
+                        height: 20,
+                        '&:hover': {
+                          backgroundColor: 'rgba(255,255,255,0.9)',
+                        }
+                      }}
+                      size="small"
+                    >
+                      <Fullscreen sx={{ fontSize: 12 }} />
+                    </IconButton>
+                    {chartTypes.questions === 'bar' && (
+                      <Bar
+                        data={getBarChartData(question.id, question.text)}
+                        options={chartOptions}
+                      />
+                    )}
+                    {chartTypes.questions === 'line' && (
+                      <Line
+                        data={getBarChartData(question.id, question.text)}
+                        options={{ ...chartOptions, elements: { line: { tension: 0.4 } } }}
+                      />
+                    )}
+                    {chartTypes.questions === 'stats' && (
+                      <Line
+                        data={getStatsSummaryData(question.id)}
+                        options={{ 
+                          ...chartOptions, 
+                          plugins: {
+                            ...chartOptions.plugins,
+                            legend: {
+                              display: true,
+                              position: 'top' as const,
+                            }
+                          },
+                          scales: {
+                            y: {
+                              beginAtZero: true,
+                              max: 5,
+                              ticks: {
+                                stepSize: 1,
+                              }
+                            }
+                          }
+                        }}
+                      />
+                    )}
                   </Box>
                 </CardContent>
               </Card>
@@ -1174,6 +2845,281 @@ export default function QuizAnalytics({
           );
         })}
       </Grid>
+
+      {/* グラフ拡大モーダル */}
+      <Modal
+        open={modalOpen}
+        onClose={closeModal}
+        closeAfterTransition
+        BackdropComponent={Backdrop}
+        BackdropProps={{
+          timeout: 500,
+          sx: { backgroundColor: 'rgba(0, 0, 0, 0.8)' }
+        }}
+      >
+        <Fade in={modalOpen}>
+          <Box sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: { xs: '95vw', sm: '90vw', md: '85vw' },
+            height: { xs: '85vh', sm: '80vh', md: '75vh' },
+            bgcolor: 'background.paper',
+            borderRadius: 3,
+            boxShadow: 24,
+            p: 0,
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            {/* モーダルヘッダー */}
+            <Box sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              p: 3,
+              borderBottom: '1px solid #e2e8f0',
+              background: 'linear-gradient(45deg, #667eea, #764ba2)',
+              color: 'white'
+            }}>
+              <Box>
+                <Typography variant="h5" sx={{ fontWeight: 600, mb: 0.5 }}>
+                  {modalContent?.title}
+                </Typography>
+                {modalContent?.subtitle && (
+                  <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                    {modalContent.subtitle}
+                  </Typography>
+                )}
+              </Box>
+              <IconButton 
+                onClick={closeModal}
+                sx={{ 
+                  color: 'white',
+                  '&:hover': {
+                    backgroundColor: 'rgba(255,255,255,0.1)'
+                  }
+                }}
+              >
+                <Close />
+              </IconButton>
+            </Box>
+
+            {/* フィルターボタン群 */}
+            <Box sx={{
+              p: 2,
+              borderBottom: '1px solid #e2e8f0',
+              backgroundColor: '#f8fafc'
+            }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <FilterList sx={{ fontSize: 20, color: '#667eea' }} />
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    クイックフィルター:
+                  </Typography>
+                </Box>
+                
+                {/* 年齢フィルター */}
+                <ButtonGroup size="small" variant="outlined">
+                  {ageRanges.slice(0, 4).map((range) => {
+                    const isActive = filterOptions.ageRange[0] === range.value[0] &&
+                                   filterOptions.ageRange[1] === range.value[1];
+                    return (
+                      <Button
+                        key={range.label}
+                        onClick={() =>
+                          setFilterOptions((prev) => ({
+                            ...prev,
+                            ageRange: range.value as [number, number],
+                          }))
+                        }
+                        variant={isActive ? "contained" : "outlined"}
+                        sx={{
+                          fontSize: '0.75rem',
+                          px: 1.5,
+                          backgroundColor: isActive ? '#667eea !important' : 'transparent',
+                          borderColor: '#667eea !important',
+                          color: isActive ? 'white !important' : '#667eea !important',
+                          '&:hover': {
+                            backgroundColor: isActive 
+                              ? '#5a67d8 !important' 
+                              : 'rgba(102, 126, 234, 0.1) !important',
+                          },
+                          '&:focus': {
+                            backgroundColor: isActive ? '#667eea !important' : 'transparent',
+                            color: isActive ? 'white !important' : '#667eea !important',
+                          }
+                        }}
+                      >
+                        {range.label}
+                      </Button>
+                    );
+                  })}
+                </ButtonGroup>
+
+                {/* 性別フィルター */}
+                <ButtonGroup size="small" variant="outlined">
+                  {genderOptions.map((option) => {
+                    const isActive = filterOptions.gender === option.value;
+                    return (
+                      <Button
+                        key={option.value}
+                        onClick={() =>
+                          setFilterOptions((prev) => ({
+                            ...prev,
+                            gender: option.value,
+                          }))
+                        }
+                        variant={isActive ? "contained" : "outlined"}
+                        sx={{
+                          fontSize: '0.75rem',
+                          px: 1.5,
+                          backgroundColor: isActive ? '#667eea !important' : 'transparent',
+                          borderColor: '#667eea !important',
+                          color: isActive ? 'white !important' : '#667eea !important',
+                          '&:hover': {
+                            backgroundColor: isActive 
+                              ? '#5a67d8 !important' 
+                              : 'rgba(102, 126, 234, 0.1) !important',
+                          },
+                          '&:focus': {
+                            backgroundColor: isActive ? '#667eea !important' : 'transparent',
+                            color: isActive ? 'white !important' : '#667eea !important',
+                          }
+                        }}
+                      >
+                        {option.label}
+                      </Button>
+                    );
+                  })}
+                </ButtonGroup>
+
+                {/* リセットボタン */}
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() =>
+                    setFilterOptions({
+                      ageRange: [0, 100],
+                      gender: "all",
+                      location: "all",
+                      responseDate: "all",
+                    })
+                  }
+                  sx={{
+                    fontSize: '0.75rem',
+                    px: 2,
+                    borderColor: '#e2e8f0',
+                    color: '#718096',
+                    '&:hover': {
+                      backgroundColor: '#f7fafc',
+                      borderColor: '#cbd5e0',
+                    }
+                  }}
+                >
+                  リセット
+                </Button>
+              </Box>
+            </Box>
+
+            {/* グラフエリア */}
+            <Box sx={{
+              flex: 1,
+              p: 3,
+              background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              {modalContent && (
+                <Box sx={{ width: '100%', height: '100%', position: 'relative' }}>
+                  {modalContent.chartType === 'pie' && (
+                    <Pie data={modalContent.data} options={{
+                      ...modalContent.options,
+                      maintainAspectRatio: false,
+                      plugins: {
+                        ...modalContent.options.plugins,
+                        legend: {
+                          ...modalContent.options.plugins?.legend,
+                          labels: {
+                            ...modalContent.options.plugins?.legend?.labels,
+                            font: { size: 14 }
+                          }
+                        }
+                      }
+                    }} />
+                  )}
+                  {modalContent.chartType === 'bar' && (
+                    <Bar data={modalContent.data} options={{
+                      ...modalContent.options,
+                      maintainAspectRatio: false,
+                      plugins: {
+                        ...modalContent.options.plugins,
+                        legend: {
+                          ...modalContent.options.plugins?.legend,
+                          labels: {
+                            ...modalContent.options.plugins?.legend?.labels,
+                            font: { size: 14 }
+                          }
+                        }
+                      }
+                    }} />
+                  )}
+                  {modalContent.chartType === 'line' && (
+                    <Line data={modalContent.data} options={{
+                      ...modalContent.options,
+                      maintainAspectRatio: false,
+                      plugins: {
+                        ...modalContent.options.plugins,
+                        legend: {
+                          ...modalContent.options.plugins?.legend,
+                          labels: {
+                            ...modalContent.options.plugins?.legend?.labels,
+                            font: { size: 14 }
+                          }
+                        }
+                      }
+                    }} />
+                  )}
+                  {modalContent.chartType === 'radar' && (
+                    <Radar data={modalContent.data} options={{
+                      ...modalContent.options,
+                      maintainAspectRatio: false,
+                      plugins: {
+                        ...modalContent.options.plugins,
+                        legend: {
+                          ...modalContent.options.plugins?.legend,
+                          labels: {
+                            ...modalContent.options.plugins?.legend?.labels,
+                            font: { size: 14 }
+                          }
+                        }
+                      }
+                    }} />
+                  )}
+                  {modalContent.chartType === 'scatter' && (
+                    <Scatter data={modalContent.data} options={{
+                      ...modalContent.options,
+                      maintainAspectRatio: false,
+                      plugins: {
+                        ...modalContent.options.plugins,
+                        legend: {
+                          ...modalContent.options.plugins?.legend,
+                          labels: {
+                            ...modalContent.options.plugins?.legend?.labels,
+                            font: { size: 14 }
+                          }
+                        }
+                      }
+                    }} />
+                  )}
+                </Box>
+              )}
+            </Box>
+          </Box>
+        </Fade>
+      </Modal>
     </Box>
   );
 }

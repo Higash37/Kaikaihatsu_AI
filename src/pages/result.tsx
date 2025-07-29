@@ -2,8 +2,6 @@ import {
   Box,
   Typography,
   Paper,
-  Grid,
-  LinearProgress,
   Chip,
   Button,
   Alert,
@@ -14,24 +12,41 @@ import { useState, useEffect } from "react";
 
 import Header from "@/components/Header";
 import Layout from "@/components/Layout";
-import {
-  getThemeKey,
-  selectPersonResult,
-  getDetailItems,
-  calculateDetailScores,
-  getThemeResults,
-} from "@/data/DiagnosisResults";
+// 古いインポートを削除
 import { saveQuizResult } from "@/utils/firebase";
 
 // 型定義
-type Question = { id: number; text: string };
+type Question = { 
+  id: string; 
+  text: string; 
+  axisId?: number;
+  type: string;
+  required: boolean;
+  order: number;
+};
 type Indicator = { id: number; name: string; description: string };
-type Answers = { [id: number]: number | undefined };
+type Axis = { id: number; name: string; description: string };
+type Answers = { [id: string]: number | undefined };
 type QuizResult = {
+  id: string;
   title: string;
   questions: Question[];
-  indicators: Indicator[];
+  indicators?: Indicator[];
+  axes?: Axis[];
   answers: Answers;
+  questionCount: number;
+  isPublic: boolean;
+  tags: string[];
+  totalResponses: number;
+  popularity: number;
+  averageRating?: number;
+  creatorId: string;
+  creatorName: string;
+  createdAt: string;
+  updatedAt: string;
+  enableDemographics: boolean;
+  enableLocationTracking: boolean;
+  enableRating: boolean;
 };
 
 // 拡張された診断結果の型
@@ -46,6 +61,7 @@ type ExtendedDiagnosisResult = {
   resultName?: string;
   resultDescription?: string;
   traits?: string[];
+  axisScores?: { axisId: number; averageScore: number; percentage: number }[];
 };
 
 export default function ResultPage() {
@@ -69,40 +85,78 @@ export default function ResultPage() {
 
         // 診断結果をローカルで生成
         const generateLocalResult = (): ExtendedDiagnosisResult => {
-          const scores = Object.values(parsedData.answers) as number[];
-          const validScores = scores.filter(
-            (score) => typeof score === "number" && score > 0
-          );
-          const averageScore =
-            validScores.length > 0
-              ? validScores.reduce((sum, score) => sum + score, 0) /
-                validScores.length
-              : 3;
+          // 軸ごとのスコアを計算
+          const axisScores: { [axisId: number]: { total: number; count: number } } = {};
+          
+          // axesが存在する場合の新しい計算方法
+          if (parsedData.axes && parsedData.axes.length > 0) {
+            parsedData.questions.forEach((question) => {
+              const answer = parsedData.answers[question.id];
+              if (answer !== undefined && question.axisId) {
+                if (!axisScores[question.axisId]) {
+                  axisScores[question.axisId] = { total: 0, count: 0 };
+                }
+                axisScores[question.axisId].total += answer;
+                axisScores[question.axisId].count += 1;
+              }
+            });
+            
+            // 各軸の平均スコアを計算
+            const averageAxisScores = Object.entries(axisScores).map(([axisId, data]) => ({
+              axisId: parseInt(axisId),
+              averageScore: data.count > 0 ? data.total / data.count : 3,
+              percentage: data.count > 0 ? Math.round((data.total / data.count - 1) * 25) : 50
+            }));
+            
+            // 最も高いスコアの軸を取得
+            const topAxis = averageAxisScores.reduce((prev, current) => 
+              prev.averageScore > current.averageScore ? prev : current
+            );
+            
+            const topAxisData = parsedData.axes.find(axis => axis.id === topAxis.axisId);
+            
+            return {
+              id: "1",
+              gender: "分析結果",
+              age: 0,
+              emotion_score: 0,
+              rational_score: 0,
+              active_score: 0,
+              passive_score: 0,
+              resultName: topAxisData?.name || "診断結果",
+              resultDescription: topAxisData?.description || "あなたの診断結果です。",
+              traits: parsedData.tags || [],
+              axisScores: averageAxisScores
+            };
+          } else {
+            // 旧形式の処理（互換性のため）
+            const scores = Object.values(parsedData.answers) as number[];
+            const validScores = scores.filter(
+              (score) => typeof score === "number" && score > 0
+            );
+            const averageScore =
+              validScores.length > 0
+                ? validScores.reduce((sum, score) => sum + score, 0) /
+                  validScores.length
+                : 3;
 
-          // クイズのテーマに基づいた結果を生成
-          const quizTitle = parsedData.title || "診断結果";
-          const themeKey = getThemeKey(quizTitle);
-          const themeResults = getThemeResults(themeKey, quizTitle);
+            // シンプルな結果を生成
+            const resultName = parsedData.title || "診断結果";
+            const resultDescription = "あなたの診断結果です";
 
-          // スコアと回答傾向に基づいて最適な人物を選択
-          const selectedPerson = selectPersonResult(
-            themeResults,
-            averageScore,
-            parsedData.answers
-          );
-
-          return {
-            id: "1",
-            gender: "分析結果",
-            age: Math.round(averageScore * 20),
-            emotion_score: Math.round(averageScore * 20),
-            rational_score: Math.round(averageScore * 20),
-            active_score: Math.round(averageScore * 15),
-            passive_score: Math.round((5 - averageScore) * 15),
-            resultName: selectedPerson.name,
-            resultDescription: selectedPerson.description,
-            traits: selectedPerson.traits,
-          };
+            return {
+              id: "1",
+              gender: "分析結果",
+              age: Math.round(averageScore * 20),
+              emotion_score: Math.round(averageScore * 20),
+              rational_score: Math.round(averageScore * 20),
+              active_score: Math.round(averageScore * 15),
+              passive_score: Math.round((5 - averageScore) * 15),
+              resultName: resultName,
+              resultDescription: resultDescription,
+              traits: parsedData.tags || [],
+            };
+          }
         };
 
         setDiagnosisResult(generateLocalResult());
@@ -128,10 +182,6 @@ export default function ResultPage() {
         quizTitle: resultData.title,
         answers: resultData.answers,
         diagnosisResult: diagnosisResult,
-        detailScores: calculateDetailScores(
-          resultData.answers,
-          getDetailItems(getThemeKey(resultData.title), resultData.title)
-        ),
         userAgent:
           typeof window !== "undefined" ? window.navigator.userAgent : "",
       };
@@ -156,14 +206,24 @@ export default function ResultPage() {
     description: diagnosisResult?.resultDescription || "あなたの診断結果です。",
   };
 
-  // テーマに応じた詳細項目を取得
-  const quizTitle = resultData.title || "診断結果";
-  const themeKey = getThemeKey(quizTitle);
-  const detailItems = getDetailItems(themeKey, quizTitle);
-  const calculatedScores = calculateDetailScores(
-    resultData.answers,
-    detailItems
-  );
+  // X軸、Y軸の座標を計算（-100から100の範囲）
+  const calculateCoordinates = () => {
+    if (!diagnosisResult.axisScores || diagnosisResult.axisScores.length < 2) {
+      return { x: 0, y: 0 };
+    }
+    
+    // X軸（ID=1）、Y軸（ID=2）のスコアを取得
+    const xAxis = diagnosisResult.axisScores.find(score => score.axisId === 1);
+    const yAxis = diagnosisResult.axisScores.find(score => score.axisId === 2);
+    
+    // -100から100の範囲に変換（平均スコア3を中心に）
+    const xCoord = xAxis ? (xAxis.averageScore - 3) * 50 : 0;
+    const yCoord = yAxis ? (yAxis.averageScore - 3) * 50 : 0;
+    
+    return { x: xCoord, y: yCoord };
+  };
+  
+  const coordinates = calculateCoordinates();
 
   return (
     <Layout>
@@ -185,7 +245,8 @@ export default function ResultPage() {
             pt: { xs: 12, sm: 14, md: 16 },
             pb: 6,
             px: { xs: 2, sm: 4, md: 6 },
-            maxWidth: "900px",
+            width: { xs: "100%", lg: "75%" },
+            maxWidth: "1200px",
             mx: "auto",
             userSelect: "none",
             WebkitUserSelect: "none",
@@ -296,88 +357,187 @@ export default function ResultPage() {
             </Paper>
           )}
 
-          <Paper
-            elevation={0}
-            sx={{
-              p: { xs: 2, md: 4 },
-              borderRadius: theme.shape.borderRadius,
-              backgroundColor: theme.palette.background.paper,
-              boxShadow: theme.shadows[1],
-              position: "relative",
-              userSelect: "none",
-              WebkitUserSelect: "none",
-              MozUserSelect: "none",
-              msUserSelect: "none",
-              pointerEvents: "auto",
-            }}
-          >
-            <Typography
-              variant="h5"
-              component="h3"
+          {/* 座標グラフ表示セクション */}
+          {resultData.axes && resultData.axes.length >= 2 && (
+            <Paper
+              elevation={0}
               sx={{
-                fontWeight: "bold",
-                mb: 3,
-                color: theme.palette.text.primary,
+                p: { xs: 2, md: 4 },
+                mb: 4,
+                borderRadius: theme.shape.borderRadius,
+                backgroundColor: theme.palette.background.paper,
+                boxShadow: theme.shadows[1],
+                position: "relative",
               }}
             >
-              詳細なプロファイル
-            </Typography>
-            <Grid container spacing={3}>
-              {calculatedScores.map((item, index) => (
-                <Grid item xs={12} sm={6} key={index}>
-                  <Box>
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        mb: 0.5,
-                      }}
-                    >
-                      <Typography
-                        variant="body1"
-                        sx={{
-                          fontWeight: "medium",
-                          color: theme.palette.text.primary,
-                        }}
-                      >
-                        {item.name}
-                      </Typography>
-                      <Typography
-                        variant="body1"
-                        sx={{
-                          fontWeight: "bold",
-                          color: theme.palette.primary.main,
-                        }}
-                      >
-                        {item.score}%
-                      </Typography>
-                    </Box>
+              <Typography
+                variant="h5"
+                component="h3"
+                sx={{
+                  fontWeight: "bold",
+                  mb: 3,
+                  color: theme.palette.text.primary,
+                  textAlign: "center",
+                }}
+              >
+                あなたのポジション
+              </Typography>
+              
+              {/* 座標グラフ */}
+              <Box
+                sx={{
+                  position: "relative",
+                  width: "100%",
+                  maxWidth: 500,
+                  height: 500,
+                  mx: "auto",
+                  mb: 3,
+                  backgroundColor: "#f8f9fa",
+                  borderRadius: 2,
+                  border: "2px solid #e0e0e0",
+                }}
+              >
+                {/* X軸 */}
+                <Box
+                  sx={{
+                    position: "absolute",
+                    top: "50%",
+                    left: 0,
+                    right: 0,
+                    height: 2,
+                    backgroundColor: "#ccc",
+                  }}
+                />
+                {/* Y軸 */}
+                <Box
+                  sx={{
+                    position: "absolute",
+                    left: "50%",
+                    top: 0,
+                    bottom: 0,
+                    width: 2,
+                    backgroundColor: "#ccc",
+                  }}
+                />
+                
+                {/* X軸ラベル */}
+                {resultData.axes[0] && (
+                  <>
                     <Typography
-                      variant="body2"
                       sx={{
-                        color: theme.palette.text.secondary,
-                        mb: 1,
+                        position: "absolute",
+                        right: 10,
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        fontSize: "0.875rem",
+                        fontWeight: "bold",
+                        color: "#666",
+                        backgroundColor: "rgba(255,255,255,0.8)",
+                        padding: "2px 6px",
+                        borderRadius: "4px",
                       }}
                     >
-                      {item.description}
+                      {resultData.axes[0].positiveName || resultData.axes[0].name + "+"}
                     </Typography>
-                    <LinearProgress
-                      variant="determinate"
-                      value={item.score}
+                    <Typography
                       sx={{
-                        height: 10,
-                        borderRadius: 5,
-                        backgroundColor: theme.palette.divider,
-                        "& .MuiLinearProgress-bar": {
-                          backgroundColor: theme.palette.primary.main,
-                        },
+                        position: "absolute",
+                        left: 10,
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        fontSize: "0.875rem",
+                        fontWeight: "bold",
+                        color: "#666",
+                        backgroundColor: "rgba(255,255,255,0.8)",
+                        padding: "2px 6px",
+                        borderRadius: "4px",
                       }}
-                    />
-                  </Box>
-                </Grid>
-              ))}
-            </Grid>
-          </Paper>
+                    >
+                      {resultData.axes[0].negativeName || resultData.axes[0].name + "-"}
+                    </Typography>
+                  </>
+                )}
+                
+                {/* Y軸ラベル */}
+                {resultData.axes[1] && (
+                  <>
+                    <Typography
+                      sx={{
+                        position: "absolute",
+                        left: "50%",
+                        top: 10,
+                        transform: "translateX(-50%)",
+                        fontSize: "0.875rem",
+                        fontWeight: "bold",
+                        color: "#666",
+                        backgroundColor: "rgba(255,255,255,0.8)",
+                        padding: "2px 6px",
+                        borderRadius: "4px",
+                      }}
+                    >
+                      {resultData.axes[1].positiveName || resultData.axes[1].name + "+"}
+                    </Typography>
+                    <Typography
+                      sx={{
+                        position: "absolute",
+                        left: "50%",
+                        bottom: 10,
+                        transform: "translateX(-50%)",
+                        fontSize: "0.875rem",
+                        fontWeight: "bold",
+                        color: "#666",
+                        backgroundColor: "rgba(255,255,255,0.8)",
+                        padding: "2px 6px",
+                        borderRadius: "4px",
+                      }}
+                    >
+                      {resultData.axes[1].negativeName || resultData.axes[1].name + "-"}
+                    </Typography>
+                  </>
+                )}
+                
+                {/* ユーザーのポイント */}
+                <Box
+                  sx={{
+                    position: "absolute",
+                    left: `${50 + coordinates.x * 0.4}%`,
+                    top: `${50 - coordinates.y * 0.4}%`,
+                    transform: "translate(-50%, -50%)",
+                    width: 20,
+                    height: 20,
+                    borderRadius: "50%",
+                    backgroundColor: theme.palette.primary.main,
+                    border: "3px solid white",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+                    zIndex: 10,
+                  }}
+                />
+              </Box>
+              
+              {/* スコア表示 */}
+              <Box sx={{ textAlign: "center", mt: 2 }}>
+                {resultData.axes[0] && (
+                  <Typography variant="body1" sx={{ mb: 1 }}>
+                    <strong>{resultData.axes[0].name}:</strong> {coordinates.x > 0 
+                      ? (resultData.axes[0].positiveName || resultData.axes[0].name + "方向")
+                      : (resultData.axes[0].negativeName || resultData.axes[0].name + "逆方向")
+                    } 寄り
+                    （{Math.abs(Math.round(coordinates.x))}点）
+                  </Typography>
+                )}
+                {resultData.axes[1] && (
+                  <Typography variant="body1">
+                    <strong>{resultData.axes[1].name}:</strong> {coordinates.y > 0 
+                      ? (resultData.axes[1].positiveName || resultData.axes[1].name + "方向")
+                      : (resultData.axes[1].negativeName || resultData.axes[1].name + "逆方向")
+                    } 寄り
+                    （{Math.abs(Math.round(coordinates.y))}点）
+                  </Typography>
+                )}
+              </Box>
+            </Paper>
+          )}
+
 
           {/* 保存ボタンとステータス */}
           <Paper
