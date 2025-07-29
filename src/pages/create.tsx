@@ -174,7 +174,7 @@ function Create() {
             textAlign: "center",
             padding: { xs: 2, md: 4 },
             paddingTop: { xs: "80px", sm: "90px" }, // ヘッダー分のマージン
-            paddingBottom: { xs: "120px", sm: "100px" }, // フッター分のマージン
+            paddingBottom: { xs: "160px", sm: "140px" }, // フッター分のマージン（増加）
             position: "relative",
             backgroundColor: muiTheme.palette.background.default,
             width: "100%",
@@ -397,6 +397,7 @@ function Create() {
               sx={{
                 width: "100%",
                 py: 2,
+                mb: 4, // 下マージンを追加
                 fontSize: "1.2rem",
                 fontWeight: "bold",
                 backgroundColor: "#667eea !important",

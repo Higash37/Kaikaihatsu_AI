@@ -62,27 +62,11 @@ const generateRandomName = (seed?: string): string => {
 
 /**
  * ユーザー名を安全に表示するためのヘルパー関数
- * メールアドレス形式や空の場合は独自のランダム名前を生成
+ * 常にデフォルトユーザー名を返す（認証システム簡略化のため）
  */
 export const getSafeDisplayName = (name: string | null | undefined): string => {
-  if (!name) {
-    return generateRandomName();
-  }
-
-  // メールアドレス形式かチェック
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (emailRegex.test(name)) {
-    // メールアドレスをシードとしてランダム名前を生成（同じメールなら同じ名前）
-    return generateRandomName(name);
-  }
-
-  // 短すぎる、数字のみ、特殊文字が多い場合もランダム名前
-  if (name.length < 2 || /^\d+$/.test(name) || /[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(name)) {
-    return generateRandomName(name);
-  }
-
-  // 通常のユーザー名はそのまま返す
-  return name;
+  // 常にデフォルトユーザー名を返す
+  return "デフォルトユーザー";
 };
 
 /**

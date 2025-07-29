@@ -1,6 +1,8 @@
 // Supabase database utilities
 import { createClient } from '@supabase/supabase-js';
 
+import { getUserId } from './auth';
+
 // Supabase client initialization
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -23,7 +25,7 @@ export async function saveQuizResult(quizData: any) {
     const { data, error } = await supabase
       .from('diagnoses')
       .insert([{
-        user_id: quizData.userId,
+        user_id: getUserId(), // 常にデフォルトユーザーIDを使用
         quiz_id: quizData.quizId,
         result_data: quizData,
         created_at: new Date().toISOString(),
@@ -203,7 +205,7 @@ export async function createQuiz(quizData: any) {
     const { data, error } = await supabase
       .from('quizzes')
       .insert([{
-        user_id: quizData.userId || quizData.creatorId,
+        user_id: getUserId(), // 常にデフォルトユーザーIDを使用
         title: quizData.title,
         description: quizData.description,
         category: quizData.category,
@@ -438,7 +440,7 @@ export async function saveQuizResponse(responseData: any) {
     const { data, error } = await supabase
       .from('diagnoses')
       .insert([{
-        user_id: responseData.userId,
+        user_id: responseData.userId || getUserId(), // デフォルトユーザーIDを使用
         quiz_id: responseData.quizId,
         responses: responseData.responses,
         result_data: responseData.result,

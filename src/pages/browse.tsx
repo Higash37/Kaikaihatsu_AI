@@ -78,8 +78,30 @@ export default function Browse() {
       }
     });
 
-  const handleQuizClick = (quizId: string) => {
-    router.push(`/quiz?id=${quizId}`);
+  const handleQuizClick = async (quiz: Quiz) => {
+    try {
+      // まずクイズの詳細データを取得
+      const response = await fetch(`/api/quiz/${quiz.id}`);
+      if (response.ok) {
+        const quizData = await response.json();
+        
+        // sessionStorageにクイズデータを保存
+        if (typeof window !== "undefined") {
+          window.sessionStorage.setItem("quizData", JSON.stringify(quizData));
+        }
+        
+        // クイズページに遷移
+        router.push(`/quiz?id=${quiz.id}`);
+      } else {
+        console.error("クイズデータの取得に失敗しました");
+        // エラー時はIDだけでクイズページに遷移
+        router.push(`/quiz?id=${quiz.id}`);
+      }
+    } catch (error) {
+      console.error("クイズデータの取得エラー:", error);
+      // エラー時はIDだけでクイズページに遷移
+      router.push(`/quiz?id=${quiz.id}`);
+    }
   };
 
   const handleSortChange = (
@@ -196,7 +218,7 @@ export default function Browse() {
                           boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
                         },
                       }}
-                      onClick={() => handleQuizClick(quiz.id)}
+                      onClick={() => handleQuizClick(quiz)}
                     >
                       <CardContent sx={{ flexGrow: 1 }}>
                         <Typography

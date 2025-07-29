@@ -63,6 +63,14 @@ interface QuizAnalyticsProps {
   quizData?: any;
 }
 
+// 診断結果の座標データの型
+interface DiagnosisCoordinate {
+  x: number;
+  y: number;
+  resultName: string;
+  count: number;
+}
+
 interface FilterOptions {
   ageRange: [number, number];
   gender: string;
@@ -237,6 +245,128 @@ export default function QuizAnalytics({
 
     return { mean, std, median, variance };
   };
+
+  // 4軸診断システムの座標分析
+  const coordinateAnalysis = useMemo(() => {
+    if (!quizData?.questions?.results || filteredResponses.length === 0) {
+      return null;
+    }
+
+    // 回答から座標を計算する
+    const calculateCoordinatesFromAnswers = (answers: any[]) => {
+      const questions = quizData.questions?.questions || [];
+      let totalXWeight = 0;
+      let totalYWeight = 0;
+      let questionCount = 0;
+
+      answers.forEach((answer) => {
+        const question = questions.find(q => q.id === answer.questionId);
+        if (question && answer.value !== undefined) {
+          const normalizedScore = (answer.value - 3) / 2; // 1-5を-1〜1に変換
+          totalXWeight += normalizedScore * (question.axisWeights?.x || 0);
+          totalYWeight += normalizedScore * (question.axisWeights?.y || 0);
+          questionCount++;
+        }
+      });
+
+      return {
+        x: questionCount > 0 ? totalXWeight / questionCount : 0,
+        y: questionCount > 0 ? totalYWeight / questionCount : 0
+      };
+    };
+
+    // 各回答の座標を計算
+    const coordinateData: DiagnosisCoordinate[] = [];
+    const results = quizData.questions.results;
+
+    filteredResponses.forEach((response) => {
+      const coord = calculateCoordinatesFromAnswers(response.answers || []);
+      
+      // 最も近い結果を見つける
+      let closestResult = results[0];
+      let minDistance = Infinity;
+
+      results.forEach(result => {
+        const distance = Math.sqrt(
+          Math.pow(result.x - coord.x, 2) + Math.pow(result.y - coord.y, 2)
+        );
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestResult = result;
+        }
+      });
+
+      // 既存の座標データを探す
+      const existingCoord = coordinateData.find(
+        c => c.resultName === closestResult.name
+      );
+
+      if (existingCoord) {
+        existingCoord.count++;
+      } else {
+        coordinateData.push({
+          x: coord.x,
+          y: coord.y,
+          resultName: closestResult.name,
+          count: 1
+        });
+      }
+    });
+
+    return coordinateData;
+  }, [filteredResponses, quizData]);
+
+  // 軸別スコア分析
+  const axisAnalysis = useMemo(() => {
+    if (!quizData?.questions?.axes || filteredResponses.length === 0) {
+      return null;
+    }
+
+    const axes = quizData.questions.axes;
+    const questions = quizData.questions.questions || [];
+
+    return axes.map(axis => {
+      const axisScores: number[] = [];
+
+      filteredResponses.forEach(response => {
+        let axisTotal = 0;
+        let axisCount = 0;
+
+        (response.answers || []).forEach(answer => {
+          const question = questions.find(q => q.id === answer.questionId);
+          if (question && answer.value !== undefined) {
+            let axisInfluence = 0;
+            if (axis.id === 1) { // X軸
+              axisInfluence = Math.abs(question.axisWeights?.x || 0);
+            } else if (axis.id === 2) { // Y軸
+              axisInfluence = Math.abs(question.axisWeights?.y || 0);
+            }
+
+            if (axisInfluence > 0) {
+              axisTotal += answer.value;
+              axisCount++;
+            }
+          }
+        });
+
+        if (axisCount > 0) {
+          axisScores.push(axisTotal / axisCount);
+        }
+      });
+
+      const stats = calculateStatistics(axisScores);
+      return {
+        axis,
+        scores: axisScores,
+        statistics: stats,
+        distribution: axisScores.reduce((acc, score) => {
+          const bucket = Math.floor(score);
+          acc[bucket] = (acc[bucket] || 0) + 1;
+          return acc;
+        }, {} as Record<number, number>)
+      };
+    });
+  }, [filteredResponses, quizData]);
 
   // 偏差値計算
   const calculateZScore = (value: number, mean: number, std: number) => {
@@ -1122,6 +1252,176 @@ export default function QuizAnalytics({
           <ToggleButton value="advanced">高度分析</ToggleButton>
         </ToggleButtonGroup>
       </Box>
+
+      {/* 4軸診断システムの座標分析（新機能） */}
+      {coordinateAnalysis && coordinateAnalysis.length > 0 && (
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="h6" component="h2" sx={{ mb: 2, fontWeight: "bold" }}>
+              📍 座標分析（4軸診断システム）
+            </Typography>
+            
+            <Grid container spacing={2}>
+              {/* 結果分布 */}
+              <Grid item xs={12} md={6}>
+                <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: "bold" }}>
+                  診断結果の分布
+                </Typography>
+                <Box sx={{ maxHeight: 300, overflowY: "auto" }}>
+                  {coordinateAnalysis.map((coord, index) => (
+                    <Box
+                      key={index}
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        p: 1,
+                        mb: 1,
+                        backgroundColor: "#f5f5f5",
+                        borderRadius: 1,
+                      }}
+                    >
+                      <Typography variant="body2">
+                        {coord.resultName}
+                      </Typography>
+                      <Chip 
+                        label={`${coord.count}人`} 
+                        color="primary" 
+                        size="small"
+                      />
+                    </Box>
+                  ))}
+                </Box>
+              </Grid>
+
+              {/* 座標散布図 */}
+              <Grid item xs={12} md={6}>
+                <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: "bold" }}>
+                  座標分布図
+                </Typography>
+                <Box sx={{ height: 300, position: "relative" }}>
+                  <Scatter
+                    data={{
+                      datasets: [{
+                        label: "診断結果",
+                        data: coordinateAnalysis.map(coord => ({
+                          x: coord.x * 100, // -1〜1を-100〜100に変換
+                          y: coord.y * 100,
+                          r: Math.max(coord.count * 3, 5) // バブルサイズを回答数に比例
+                        })),
+                        backgroundColor: "rgba(54, 162, 235, 0.6)",
+                        borderColor: "rgba(54, 162, 235, 1)",
+                      }]
+                    }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      scales: {
+                        x: {
+                          min: -100,
+                          max: 100,
+                          title: {
+                            display: true,
+                            text: quizData?.questions?.axes?.[0]?.name || "X軸"
+                          }
+                        },
+                        y: {
+                          min: -100,
+                          max: 100,
+                          title: {
+                            display: true,
+                            text: quizData?.questions?.axes?.[1]?.name || "Y軸"
+                          }
+                        }
+                      },
+                      plugins: {
+                        tooltip: {
+                          callbacks: {
+                            label: (context: any) => {
+                              const dataIndex = context.dataIndex;
+                              const coord = coordinateAnalysis[dataIndex];
+                              return `${coord.resultName}: ${coord.count}人`;
+                            }
+                          }
+                        }
+                      }
+                    }}
+                  />
+                </Box>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 軸別スコア分析（新機能） */}
+      {axisAnalysis && axisAnalysis.length > 0 && (
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="h6" component="h2" sx={{ mb: 2, fontWeight: "bold" }}>
+              📊 軸別スコア分析
+            </Typography>
+            
+            <Grid container spacing={2}>
+              {axisAnalysis.map((analysis, index) => (
+                <Grid item xs={12} md={6} key={index}>
+                  <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: "bold" }}>
+                    {analysis.axis.name}
+                  </Typography>
+                  
+                  {/* 統計情報 */}
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      平均: {analysis.statistics.mean.toFixed(2)} | 
+                      中央値: {analysis.statistics.median.toFixed(2)} | 
+                      標準偏差: {analysis.statistics.std.toFixed(2)}
+                    </Typography>
+                  </Box>
+
+                  {/* スコア分布バー */}
+                  <Box sx={{ height: 200 }}>
+                    <Bar
+                      data={{
+                        labels: ["1点", "2点", "3点", "4点", "5点"],
+                        datasets: [{
+                          label: "回答数",
+                          data: [
+                            analysis.distribution[1] || 0,
+                            analysis.distribution[2] || 0,
+                            analysis.distribution[3] || 0,
+                            analysis.distribution[4] || 0,
+                            analysis.distribution[5] || 0,
+                          ],
+                          backgroundColor: "rgba(54, 162, 235, 0.6)",
+                          borderColor: "rgba(54, 162, 235, 1)",
+                          borderWidth: 1,
+                        }]
+                      }}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: {
+                            display: false
+                          }
+                        },
+                        scales: {
+                          y: {
+                            beginAtZero: true,
+                            ticks: {
+                              stepSize: 1
+                            }
+                          }
+                        }
+                      }}
+                    />
+                  </Box>
+                </Grid>
+              ))}
+            </Grid>
+          </CardContent>
+        </Card>
+      )}
 
       {/* フィルター（フッターより上に固定） - モーダル開いてる時は非表示 */}
       <Box

@@ -64,17 +64,40 @@ export default function Quiz() {
   const [isScrolling, setIsScrolling] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const storedData = window.sessionStorage.getItem("quizData");
-      if (storedData) {
-        const parsedData: QuizData = JSON.parse(storedData);
-        setQuizData(parsedData);
-      } else {
-        // クイズデータがない場合はトップページに戻す
-        router.replace("/");
+    const loadQuizData = async () => {
+      if (typeof window !== "undefined") {
+        const storedData = window.sessionStorage.getItem("quizData");
+        if (storedData) {
+          const parsedData: QuizData = JSON.parse(storedData);
+          setQuizData(parsedData);
+        } else if (router.query.id) {
+          // sessionStorageにデータがない場合、APIからクイズデータを取得
+          try {
+            const response = await fetch(`/api/quiz/${router.query.id}`);
+            if (response.ok) {
+              const quizData = await response.json();
+              setQuizData(quizData);
+              // 取得したデータをsessionStorageに保存
+              window.sessionStorage.setItem("quizData", JSON.stringify(quizData));
+            } else {
+              console.error("クイズデータの取得に失敗しました");
+              router.replace("/");
+            }
+          } catch (error) {
+            console.error("クイズデータの取得エラー:", error);
+            router.replace("/");
+          }
+        } else {
+          // クイズデータがない場合はトップページに戻す
+          router.replace("/");
+        }
       }
+    };
+
+    if (router.isReady) {
+      loadQuizData();
     }
-  }, [router]);
+  }, [router.isReady, router.query.id]);
 
   const questionsPerPage = 10;
   const currentQuestions = useMemo(() => {
@@ -97,23 +120,23 @@ export default function Quiz() {
     if (!quizData) return;
 
     try {
-      // クイズ回答データを構築
+      const quizId = quizData.id || (router.query.id as string) || "unknown";
+
+      // 回答データを保存
       const responseData = {
-        quizId: quizData.id || (router.query.id as string) || "unknown", // クイズIDを取得
+        quizId: quizId,
         answers: Object.entries(answers).map(([questionId, value]) => ({
           questionId: questionId,
           value: value || 0,
-          text: undefined, // スケール回答なのでtextはundefined
+          text: undefined,
         })),
-        demographics: {
-          // デモグラフィック情報があれば追加
-        },
-        rating: undefined, // 評価機能があれば追加
-        location: undefined, // 位置情報機能があれば追加
+        demographics: {},
+        rating: undefined,
+        location: undefined,
       };
 
-      // Firestoreに回答データを保存
-      const response = await fetch("/api/responses", {
+      // 回答を保存
+      const saveResponse = await fetch("/api/responses", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -121,45 +144,50 @@ export default function Quiz() {
         body: JSON.stringify(responseData),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to save response");
+      if (!saveResponse.ok) {
+        console.warn("回答の保存に失敗しました");
       }
 
-      // 診断結果をセッションストレージに保存（結果ページ用）
-      const resultData = {
-        ...quizData,
-        answers,
-        // 軸情報がない場合のデフォルト軸を追加
-        axes: quizData.axes || [
-          {
-            id: 1,
-            name: "感情↔理性",
-            description: "感情的か理性的かの軸",
-            positiveName: "理性的",
-            negativeName: "感情的"
-          },
-          {
-            id: 2,
-            name: "内向↔外向",
-            description: "内向的か外向的かの軸",
-            positiveName: "外向的",
-            negativeName: "内向的"
-          }
-        ]
-      };
+      // 4軸診断システムで診断を実行
+      const diagnosisResponse = await fetch("/api/diagnose", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          quizId: quizId,
+          answers: answers, // { questionId: score } 形式
+        }),
+      });
 
-      if (typeof window !== "undefined") {
-        window.sessionStorage.setItem("quizResult", JSON.stringify(resultData));
+      if (diagnosisResponse.ok) {
+        const diagnosisData = await diagnosisResponse.json();
+        
+        // 新しい診断結果データを構築
+        const resultData = {
+          ...quizData,
+          answers,
+          diagnosis: diagnosisData.diagnosis,
+          quizTitle: diagnosisData.quizTitle,
+          quizDescription: diagnosisData.quizDescription,
+        };
+
+        if (typeof window !== "undefined") {
+          window.sessionStorage.setItem("quizResult", JSON.stringify(resultData));
+        }
+
+        router.push("/result");
+      } else {
+        throw new Error("診断に失敗しました");
       }
 
-      router.push("/result");
     } catch (error) {
-      console.error("回答の保存に失敗しました:", error);
-      // エラーが発生してもとりあえず結果ページに遷移
-      const resultData = {
+      console.error("診断処理エラー:", error);
+      
+      // エラー時は従来の結果表示に戻す
+      const fallbackData = {
         ...quizData,
         answers,
-        // 軸情報がない場合のデフォルト軸を追加
         axes: quizData.axes || [
           {
             id: 1,
@@ -179,7 +207,7 @@ export default function Quiz() {
       };
 
       if (typeof window !== "undefined") {
-        window.sessionStorage.setItem("quizResult", JSON.stringify(resultData));
+        window.sessionStorage.setItem("quizResult", JSON.stringify(fallbackData));
       }
 
       router.push("/result");

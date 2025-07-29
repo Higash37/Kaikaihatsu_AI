@@ -27,6 +27,24 @@ type Question = {
 type Indicator = { id: number; name: string; description: string };
 type Axis = { id: number; name: string; description: string };
 type Answers = { [id: string]: number | undefined };
+
+// 新しい診断結果の型
+type DiagnosisResult = {
+  id: string;
+  name: string;
+  description: string;
+  coordinates: {
+    x: number; // -1 to 1
+    y: number; // -1 to 1
+  };
+  axisScores: {
+    axisId: number;
+    axisName: string;
+    score: number; // 1-5のスケール
+    percentage: number; // 0-100%
+  }[];
+};
+
 type QuizResult = {
   id: string;
   title: string;
@@ -34,6 +52,9 @@ type QuizResult = {
   indicators?: Indicator[];
   axes?: Axis[];
   answers: Answers;
+  diagnosis?: DiagnosisResult; // 新しい診断結果
+  quizTitle?: string;
+  quizDescription?: string;
   questionCount: number;
   isPublic: boolean;
   tags: string[];
@@ -62,6 +83,7 @@ type ExtendedDiagnosisResult = {
   resultDescription?: string;
   traits?: string[];
   axisScores?: { axisId: number; averageScore: number; percentage: number }[];
+  coordinates?: { x: number; y: number };
 };
 
 export default function ResultPage() {
@@ -83,83 +105,106 @@ export default function ResultPage() {
         const parsedData = JSON.parse(storedData);
         setResultData(parsedData);
 
-        // 診断結果をローカルで生成
-        const generateLocalResult = (): ExtendedDiagnosisResult => {
-          // 軸ごとのスコアを計算
-          const axisScores: { [axisId: number]: { total: number; count: number } } = {};
-          
-          // axesが存在する場合の新しい計算方法
-          if (parsedData.axes && parsedData.axes.length > 0) {
-            parsedData.questions.forEach((question) => {
-              const answer = parsedData.answers[question.id];
-              if (answer !== undefined && question.axisId) {
-                if (!axisScores[question.axisId]) {
-                  axisScores[question.axisId] = { total: 0, count: 0 };
+        // 新しい4軸診断システムの結果がある場合はそれを使用
+        if (parsedData.diagnosis) {
+          const newDiagnosisResult: ExtendedDiagnosisResult = {
+            id: parsedData.diagnosis.id,
+            gender: "診断結果",
+            age: 0,
+            emotion_score: 0,
+            rational_score: 0,
+            active_score: 0,
+            passive_score: 0,
+            resultName: parsedData.diagnosis.name,
+            resultDescription: parsedData.diagnosis.description,
+            traits: parsedData.tags || [],
+            axisScores: parsedData.diagnosis.axisScores?.map(axis => ({
+              axisId: axis.axisId,
+              averageScore: axis.score,
+              percentage: axis.percentage
+            })) || [],
+            coordinates: parsedData.diagnosis.coordinates
+          };
+          setDiagnosisResult(newDiagnosisResult);
+        } else {
+          // 従来の診断結果生成（互換性のため）
+          const generateLocalResult = (): ExtendedDiagnosisResult => {
+            // 軸ごとのスコアを計算
+            const axisScores: { [axisId: number]: { total: number; count: number } } = {};
+            
+            // axesが存在する場合の新しい計算方法
+            if (parsedData.axes && parsedData.axes.length > 0) {
+              parsedData.questions.forEach((question) => {
+                const answer = parsedData.answers[question.id];
+                if (answer !== undefined && question.axisId) {
+                  if (!axisScores[question.axisId]) {
+                    axisScores[question.axisId] = { total: 0, count: 0 };
+                  }
+                  axisScores[question.axisId].total += answer;
+                  axisScores[question.axisId].count += 1;
                 }
-                axisScores[question.axisId].total += answer;
-                axisScores[question.axisId].count += 1;
-              }
-            });
-            
-            // 各軸の平均スコアを計算
-            const averageAxisScores = Object.entries(axisScores).map(([axisId, data]) => ({
-              axisId: parseInt(axisId),
-              averageScore: data.count > 0 ? data.total / data.count : 3,
-              percentage: data.count > 0 ? Math.round((data.total / data.count - 1) * 25) : 50
-            }));
-            
-            // 最も高いスコアの軸を取得
-            const topAxis = averageAxisScores.reduce((prev, current) => 
-              prev.averageScore > current.averageScore ? prev : current
-            );
-            
-            const topAxisData = parsedData.axes.find(axis => axis.id === topAxis.axisId);
-            
-            return {
-              id: "1",
-              gender: "分析結果",
-              age: 0,
-              emotion_score: 0,
-              rational_score: 0,
-              active_score: 0,
-              passive_score: 0,
-              resultName: topAxisData?.name || "診断結果",
-              resultDescription: topAxisData?.description || "あなたの診断結果です。",
-              traits: parsedData.tags || [],
-              axisScores: averageAxisScores
-            };
-          } else {
-            // 旧形式の処理（互換性のため）
-            const scores = Object.values(parsedData.answers) as number[];
-            const validScores = scores.filter(
-              (score) => typeof score === "number" && score > 0
-            );
-            const averageScore =
-              validScores.length > 0
-                ? validScores.reduce((sum, score) => sum + score, 0) /
-                  validScores.length
-                : 3;
+              });
+              
+              // 各軸の平均スコアを計算
+              const averageAxisScores = Object.entries(axisScores).map(([axisId, data]) => ({
+                axisId: parseInt(axisId),
+                averageScore: data.count > 0 ? data.total / data.count : 3,
+                percentage: data.count > 0 ? Math.round((data.total / data.count - 1) * 25) : 50
+              }));
+              
+              // 最も高いスコアの軸を取得
+              const topAxis = averageAxisScores.reduce((prev, current) => 
+                prev.averageScore > current.averageScore ? prev : current
+              );
+              
+              const topAxisData = parsedData.axes.find(axis => axis.id === topAxis.axisId);
+              
+              return {
+                id: "1",
+                gender: "分析結果",
+                age: 0,
+                emotion_score: 0,
+                rational_score: 0,
+                active_score: 0,
+                passive_score: 0,
+                resultName: topAxisData?.name || "診断結果",
+                resultDescription: topAxisData?.description || "あなたの診断結果です。",
+                traits: parsedData.tags || [],
+                axisScores: averageAxisScores
+              };
+            } else {
+              // 旧形式の処理（互換性のため）
+              const scores = Object.values(parsedData.answers) as number[];
+              const validScores = scores.filter(
+                (score) => typeof score === "number" && score > 0
+              );
+              const averageScore =
+                validScores.length > 0
+                  ? validScores.reduce((sum, score) => sum + score, 0) /
+                    validScores.length
+                  : 3;
 
-            // シンプルな結果を生成
-            const resultName = parsedData.title || "診断結果";
-            const resultDescription = "あなたの診断結果です";
+              // シンプルな結果を生成
+              const resultName = parsedData.title || "診断結果";
+              const resultDescription = "あなたの診断結果です";
 
-            return {
-              id: "1",
-              gender: "分析結果",
-              age: Math.round(averageScore * 20),
-              emotion_score: Math.round(averageScore * 20),
-              rational_score: Math.round(averageScore * 20),
-              active_score: Math.round(averageScore * 15),
-              passive_score: Math.round((5 - averageScore) * 15),
-              resultName: resultName,
-              resultDescription: resultDescription,
-              traits: parsedData.tags || [],
-            };
-          }
-        };
+              return {
+                id: "1",
+                gender: "分析結果",
+                age: Math.round(averageScore * 20),
+                emotion_score: Math.round(averageScore * 20),
+                rational_score: Math.round(averageScore * 20),
+                active_score: Math.round(averageScore * 15),
+                passive_score: Math.round((5 - averageScore) * 15),
+                resultName: resultName,
+                resultDescription: resultDescription,
+                traits: parsedData.tags || [],
+              };
+            }
+          };
 
-        setDiagnosisResult(generateLocalResult());
+          setDiagnosisResult(generateLocalResult());
+        }
       } else {
         router.replace("/");
       }
@@ -208,6 +253,15 @@ export default function ResultPage() {
 
   // X軸、Y軸の座標を計算（-100から100の範囲）
   const calculateCoordinates = () => {
+    // 新しい診断システムの座標がある場合はそれを使用
+    if (resultData?.diagnosis?.coordinates) {
+      return {
+        x: resultData.diagnosis.coordinates.x * 100, // -1〜1を-100〜100に変換
+        y: resultData.diagnosis.coordinates.y * 100
+      };
+    }
+    
+    // 従来の方法（互換性のため）
     if (!diagnosisResult.axisScores || diagnosisResult.axisScores.length < 2) {
       return { x: 0, y: 0 };
     }
@@ -358,7 +412,7 @@ export default function ResultPage() {
           )}
 
           {/* 座標グラフ表示セクション */}
-          {resultData.axes && resultData.axes.length >= 2 && (
+          {(resultData?.diagnosis || (resultData.axes && resultData.axes.length >= 2)) && (
             <Paper
               elevation={0}
               sx={{
@@ -420,79 +474,167 @@ export default function ResultPage() {
                   }}
                 />
                 
-                {/* X軸ラベル */}
-                {resultData.axes[0] && (
+                {/* 軸ラベル（新しい診断システム対応） */}
+                {resultData?.diagnosis?.axisScores ? (
+                  // 新しい診断システムの軸ラベル
                   <>
-                    <Typography
-                      sx={{
-                        position: "absolute",
-                        right: 10,
-                        top: "50%",
-                        transform: "translateY(-50%)",
-                        fontSize: "0.875rem",
-                        fontWeight: "bold",
-                        color: "#666",
-                        backgroundColor: "rgba(255,255,255,0.8)",
-                        padding: "2px 6px",
-                        borderRadius: "4px",
-                      }}
-                    >
-                      {resultData.axes[0].positiveName || resultData.axes[0].name + "+"}
-                    </Typography>
-                    <Typography
-                      sx={{
-                        position: "absolute",
-                        left: 10,
-                        top: "50%",
-                        transform: "translateY(-50%)",
-                        fontSize: "0.875rem",
-                        fontWeight: "bold",
-                        color: "#666",
-                        backgroundColor: "rgba(255,255,255,0.8)",
-                        padding: "2px 6px",
-                        borderRadius: "4px",
-                      }}
-                    >
-                      {resultData.axes[0].negativeName || resultData.axes[0].name + "-"}
-                    </Typography>
+                    {resultData.diagnosis.axisScores.map((axis, index) => {
+                      if (axis.axisId === 1) { // X軸
+                        return (
+                          <React.Fragment key={axis.axisId}>
+                            <Typography
+                              sx={{
+                                position: "absolute",
+                                right: 10,
+                                top: "50%",
+                                transform: "translateY(-50%)",
+                                fontSize: "0.875rem",
+                                fontWeight: "bold",
+                                color: "#666",
+                                backgroundColor: "rgba(255,255,255,0.8)",
+                                padding: "2px 6px",
+                                borderRadius: "4px",
+                              }}
+                            >
+                              {axis.axisName}+
+                            </Typography>
+                            <Typography
+                              sx={{
+                                position: "absolute",
+                                left: 10,
+                                top: "50%",
+                                transform: "translateY(-50%)",
+                                fontSize: "0.875rem",
+                                fontWeight: "bold",
+                                color: "#666",
+                                backgroundColor: "rgba(255,255,255,0.8)",
+                                padding: "2px 6px",
+                                borderRadius: "4px",
+                              }}
+                            >
+                              {axis.axisName}-
+                            </Typography>
+                          </React.Fragment>
+                        );
+                      } else if (axis.axisId === 2) { // Y軸
+                        return (
+                          <React.Fragment key={axis.axisId}>
+                            <Typography
+                              sx={{
+                                position: "absolute",
+                                left: "50%",
+                                top: 10,
+                                transform: "translateX(-50%)",
+                                fontSize: "0.875rem",
+                                fontWeight: "bold",
+                                color: "#666",
+                                backgroundColor: "rgba(255,255,255,0.8)",
+                                padding: "2px 6px",
+                                borderRadius: "4px",
+                              }}
+                            >
+                              {axis.axisName}+
+                            </Typography>
+                            <Typography
+                              sx={{
+                                position: "absolute",
+                                left: "50%",
+                                bottom: 10,
+                                transform: "translateX(-50%)",
+                                fontSize: "0.875rem",
+                                fontWeight: "bold",
+                                color: "#666",
+                                backgroundColor: "rgba(255,255,255,0.8)",
+                                padding: "2px 6px",
+                                borderRadius: "4px",
+                              }}
+                            >
+                              {axis.axisName}-
+                            </Typography>
+                          </React.Fragment>
+                        );
+                      }
+                      return null;
+                    })}
                   </>
-                )}
-                
-                {/* Y軸ラベル */}
-                {resultData.axes[1] && (
+                ) : (
+                  // 従来の軸ラベル表示
                   <>
-                    <Typography
-                      sx={{
-                        position: "absolute",
-                        left: "50%",
-                        top: 10,
-                        transform: "translateX(-50%)",
-                        fontSize: "0.875rem",
-                        fontWeight: "bold",
-                        color: "#666",
-                        backgroundColor: "rgba(255,255,255,0.8)",
-                        padding: "2px 6px",
-                        borderRadius: "4px",
-                      }}
-                    >
-                      {resultData.axes[1].positiveName || resultData.axes[1].name + "+"}
-                    </Typography>
-                    <Typography
-                      sx={{
-                        position: "absolute",
-                        left: "50%",
-                        bottom: 10,
-                        transform: "translateX(-50%)",
-                        fontSize: "0.875rem",
-                        fontWeight: "bold",
-                        color: "#666",
-                        backgroundColor: "rgba(255,255,255,0.8)",
-                        padding: "2px 6px",
-                        borderRadius: "4px",
-                      }}
-                    >
-                      {resultData.axes[1].negativeName || resultData.axes[1].name + "-"}
-                    </Typography>
+                    {/* X軸ラベル */}
+                    {resultData.axes && resultData.axes[0] && (
+                      <>
+                        <Typography
+                          sx={{
+                            position: "absolute",
+                            right: 10,
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            fontSize: "0.875rem",
+                            fontWeight: "bold",
+                            color: "#666",
+                            backgroundColor: "rgba(255,255,255,0.8)",
+                            padding: "2px 6px",
+                            borderRadius: "4px",
+                          }}
+                        >
+                          {resultData.axes[0].positiveName || resultData.axes[0].name + "+"}
+                        </Typography>
+                        <Typography
+                          sx={{
+                            position: "absolute",
+                            left: 10,
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            fontSize: "0.875rem",
+                            fontWeight: "bold",
+                            color: "#666",
+                            backgroundColor: "rgba(255,255,255,0.8)",
+                            padding: "2px 6px",
+                            borderRadius: "4px",
+                          }}
+                        >
+                          {resultData.axes[0].negativeName || resultData.axes[0].name + "-"}
+                        </Typography>
+                      </>
+                    )}
+                    
+                    {/* Y軸ラベル */}
+                    {resultData.axes && resultData.axes[1] && (
+                      <>
+                        <Typography
+                          sx={{
+                            position: "absolute",
+                            left: "50%",
+                            top: 10,
+                            transform: "translateX(-50%)",
+                            fontSize: "0.875rem",
+                            fontWeight: "bold",
+                            color: "#666",
+                            backgroundColor: "rgba(255,255,255,0.8)",
+                            padding: "2px 6px",
+                            borderRadius: "4px",
+                          }}
+                        >
+                          {resultData.axes[1].positiveName || resultData.axes[1].name + "+"}
+                        </Typography>
+                        <Typography
+                          sx={{
+                            position: "absolute",
+                            left: "50%",
+                            bottom: 10,
+                            transform: "translateX(-50%)",
+                            fontSize: "0.875rem",
+                            fontWeight: "bold",
+                            color: "#666",
+                            backgroundColor: "rgba(255,255,255,0.8)",
+                            padding: "2px 6px",
+                            borderRadius: "4px",
+                          }}
+                        >
+                          {resultData.axes[1].negativeName || resultData.axes[1].name + "-"}
+                        </Typography>
+                      </>
+                    )}
                   </>
                 )}
                 
@@ -516,23 +658,36 @@ export default function ResultPage() {
               
               {/* スコア表示 */}
               <Box sx={{ textAlign: "center", mt: 2 }}>
-                {resultData.axes[0] && (
-                  <Typography variant="body1" sx={{ mb: 1 }}>
-                    <strong>{resultData.axes[0].name}:</strong> {coordinates.x > 0 
-                      ? (resultData.axes[0].positiveName || resultData.axes[0].name + "方向")
-                      : (resultData.axes[0].negativeName || resultData.axes[0].name + "逆方向")
-                    } 寄り
-                    （{Math.abs(Math.round(coordinates.x))}点）
-                  </Typography>
-                )}
-                {resultData.axes[1] && (
-                  <Typography variant="body1">
-                    <strong>{resultData.axes[1].name}:</strong> {coordinates.y > 0 
-                      ? (resultData.axes[1].positiveName || resultData.axes[1].name + "方向")
-                      : (resultData.axes[1].negativeName || resultData.axes[1].name + "逆方向")
-                    } 寄り
-                    （{Math.abs(Math.round(coordinates.y))}点）
-                  </Typography>
+                {resultData?.diagnosis?.axisScores ? (
+                  // 新しい診断システムのスコア表示
+                  resultData.diagnosis.axisScores.map((axis) => (
+                    <Typography key={axis.axisId} variant="body1" sx={{ mb: 1 }}>
+                      <strong>{axis.axisName}:</strong> {axis.score.toFixed(1)}点 
+                      ({axis.percentage}%)
+                    </Typography>
+                  ))
+                ) : (
+                  // 従来のスコア表示
+                  <>
+                    {resultData.axes && resultData.axes[0] && (
+                      <Typography variant="body1" sx={{ mb: 1 }}>
+                        <strong>{resultData.axes[0].name}:</strong> {coordinates.x > 0 
+                          ? (resultData.axes[0].positiveName || resultData.axes[0].name + "方向")
+                          : (resultData.axes[0].negativeName || resultData.axes[0].name + "逆方向")
+                        } 寄り
+                        （{Math.abs(Math.round(coordinates.x))}点）
+                      </Typography>
+                    )}
+                    {resultData.axes && resultData.axes[1] && (
+                      <Typography variant="body1">
+                        <strong>{resultData.axes[1].name}:</strong> {coordinates.y > 0 
+                          ? (resultData.axes[1].positiveName || resultData.axes[1].name + "方向")
+                          : (resultData.axes[1].negativeName || resultData.axes[1].name + "逆方向")
+                        } 寄り
+                        （{Math.abs(Math.round(coordinates.y))}点）
+                      </Typography>
+                    )}
+                  </>
                 )}
               </Box>
             </Paper>
