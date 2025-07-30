@@ -378,27 +378,27 @@ export default function Quiz() {
               <CircleBoxBigleft
                 onClick={() => handleBoxClick(question.id, 5)}
                 selected={answers[question.id] === 5}
-                questionId={question.id}
+                questionId={parseInt(question.id, 10)}
               />
               <CircleBoxMiddleLeft
                 onClick={() => handleBoxClick(question.id, 4)}
                 selected={answers[question.id] === 4}
-                questionId={question.id}
+                questionId={parseInt(question.id, 10)}
               />
               <CircleBoxSmall
                 onClick={() => handleBoxClick(question.id, 3)}
                 selected={answers[question.id] === 3}
-                questionId={question.id}
+                questionId={parseInt(question.id, 10)}
               />
               <CircleBoxMiddleRight
                 onClick={() => handleBoxClick(question.id, 2)}
                 selected={answers[question.id] === 2}
-                questionId={question.id}
+                questionId={parseInt(question.id, 10)}
               />
               <CircleBoxBigright
                 onClick={() => handleBoxClick(question.id, 1)}
                 selected={answers[question.id] === 1}
-                questionId={question.id}
+                questionId={parseInt(question.id, 10)}
               />
             </Box>
             <Box

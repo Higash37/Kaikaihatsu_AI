@@ -35,6 +35,7 @@ type QuizData = {
 
 type ErrorResponse = {
   error: string;
+  details?: string;
 };
 
 export default async function handler(

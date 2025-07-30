@@ -143,7 +143,7 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ title, children }) =>
 };
 
 const SettingsPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const theme = useTheme();
   const [notifications, setNotifications] = useState(true);
   const [autoSave, setAutoSave] = useState(true);
@@ -201,7 +201,7 @@ const SettingsPage: React.FC = () => {
             <SettingsSection>
               <SettingsListItem
                 icon={<AccountCircle sx={{ color: theme.palette.primary.main }} />}
-                primary={user?.username || "ユーザー"}
+                primary={profile?.username || "ユーザー"}
                 secondary="プロフィールを編集"
                 onClick={() => handleSectionClick('profile')}
                 showChevron

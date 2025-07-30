@@ -25,7 +25,13 @@ type Question = {
   order: number;
 };
 type Indicator = { id: number; name: string; description: string };
-type Axis = { id: number; name: string; description: string };
+type Axis = { 
+  id: number; 
+  name: string; 
+  description: string;
+  positiveName?: string;
+  negativeName?: string;
+};
 type Answers = { [id: string]: number | undefined };
 
 // 新しい診断結果の型
@@ -118,7 +124,7 @@ export default function ResultPage() {
             resultName: parsedData.diagnosis.name,
             resultDescription: parsedData.diagnosis.description,
             traits: parsedData.tags || [],
-            axisScores: parsedData.diagnosis.axisScores?.map(axis => ({
+            axisScores: parsedData.diagnosis.axisScores?.map((axis: any) => ({
               axisId: axis.axisId,
               averageScore: axis.score,
               percentage: axis.percentage
@@ -134,7 +140,7 @@ export default function ResultPage() {
             
             // axesが存在する場合の新しい計算方法
             if (parsedData.axes && parsedData.axes.length > 0) {
-              parsedData.questions.forEach((question) => {
+              parsedData.questions.forEach((question: Question) => {
                 const answer = parsedData.answers[question.id];
                 if (answer !== undefined && question.axisId) {
                   if (!axisScores[question.axisId]) {
@@ -157,7 +163,7 @@ export default function ResultPage() {
                 prev.averageScore > current.averageScore ? prev : current
               );
               
-              const topAxisData = parsedData.axes.find(axis => axis.id === topAxis.axisId);
+              const topAxisData = parsedData.axes.find((axis: Axis) => axis.id === topAxis.axisId);
               
               return {
                 id: "1",

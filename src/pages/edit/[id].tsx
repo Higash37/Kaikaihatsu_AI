@@ -26,7 +26,7 @@ import { useTheme } from "@mui/material/styles";
 import { useRouter } from "next/router";
 import React, { useState, useEffect } from "react";
 
-import { useAuth } from "../contexts/SupabaseAuthContext";
+import { useAuth } from "../../contexts/SupabaseAuthContext";
 
 import Header from "@/components/Header";
 import Layout from "@/components/Layout";

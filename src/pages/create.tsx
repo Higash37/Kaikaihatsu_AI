@@ -40,7 +40,7 @@ function Create() {
   const [showModeModal, setShowModeModal] = useState(false);
   const router = useRouter();
   const muiTheme = useTheme();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   // 一時的に認証チェックを無効化
   // useEffect(() => {
@@ -122,7 +122,7 @@ function Create() {
           enableLocationTracking,
           enableRating,
           creatorId: user?.id || "temp_user_001",
-          creatorName: user?.username || user?.profile?.displayName || "テストユーザー",
+          creatorName: profile?.username || "テストユーザー",
         }),
       });
 
@@ -195,7 +195,6 @@ function Create() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.8, duration: 0.5 }}
             style={{ zIndex: 2, width: "100%", maxWidth: "800px" }}
-          sx={{ width: { xs: "100%", lg: "75%" } }}
           >
             <Typography
               variant="h4"

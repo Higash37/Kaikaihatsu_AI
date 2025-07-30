@@ -115,6 +115,36 @@ export async function updateQuizResult(id: string, updateData: any) {
   }
 }
 
+// Quiz functions
+export async function getQuizById(quizId: string) {
+  if (!isSupabaseAvailable()) {
+    console.warn("Supabase not available, returning mock data");
+    return {
+      id: quizId,
+      title: "Mock Quiz",
+      questions: {
+        questions: [],
+        axes: [],
+        results: []
+      }
+    };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('quizzes')
+      .select('*')
+      .eq('id', quizId)
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error("Error fetching quiz: ", error);
+    throw error;
+  }
+}
+
 // User profile functions
 export async function createUserProfile(userId: string, userData: any) {
   if (!isSupabaseAvailable()) {

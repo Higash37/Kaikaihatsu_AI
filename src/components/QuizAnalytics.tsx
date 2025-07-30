@@ -73,14 +73,15 @@ interface FilterOptions {
   responseDate: string;
 }
 
-type ChartType = 'bar' | 'pie' | 'line' | 'stats';
+type ChartType = 'bar' | 'pie' | 'line' | 'scatter' | 'radar' | 'stats';
 
 export default function QuizAnalytics({
+  quizId,
   quizTitle,
   responses,
   questions,
   quizData,
-}: Omit<QuizAnalyticsProps, 'quizId'>) {
+}: QuizAnalyticsProps) {
   const [viewMode, setViewMode] = useState<"basic" | "advanced">("basic");
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
     ageRange: [0, 100],
@@ -98,7 +99,7 @@ export default function QuizAnalytics({
   const [modalContent, setModalContent] = useState<{
     title: string;
     subtitle?: string;
-    chartType: 'pie' | 'bar' | 'line' | 'radar' | 'scatter';
+    chartType: ChartType;
     data: any;
     options: any;
     questionId?: string;
@@ -200,7 +201,7 @@ export default function QuizAnalytics({
   const openModal = (
     title: string,
     subtitle: string,
-    chartType: 'pie' | 'bar' | 'line' | 'radar' | 'scatter',
+    chartType: ChartType,
     data: any,
     options: any,
     questionId?: string
@@ -254,7 +255,7 @@ export default function QuizAnalytics({
       let questionCount = 0;
 
       answers.forEach((answer) => {
-        const question = questions.find(q => q.id === answer.questionId);
+        const question = questions.find((q: any) => q.id === answer.questionId);
         if (question && answer.value !== undefined) {
           const normalizedScore = (answer.value - 3) / 2; // 1-5を-1〜1に変換
           totalXWeight += normalizedScore * (question.axisWeights?.x || 0);
@@ -280,7 +281,7 @@ export default function QuizAnalytics({
       let closestResult = results[0];
       let minDistance = Infinity;
 
-      results.forEach(result => {
+      results.forEach((result: any) => {
         const distance = Math.sqrt(
           Math.pow(result.x - coord.x, 2) + Math.pow(result.y - coord.y, 2)
         );
@@ -319,15 +320,15 @@ export default function QuizAnalytics({
     const axes = quizData.questions.axes;
     const questions = quizData.questions.questions || [];
 
-    return axes.map(axis => {
+    return axes.map((axis: any) => {
       const axisScores: number[] = [];
 
       filteredResponses.forEach(response => {
         let axisTotal = 0;
         let axisCount = 0;
 
-        (response.answers || []).forEach(answer => {
-          const question = questions.find(q => q.id === answer.questionId);
+        (response.answers || []).forEach((answer: any) => {
+          const question = questions.find((q: any) => q.id === answer.questionId);
           if (question && answer.value !== undefined) {
             let axisInfluence = 0;
             if (axis.id === 1) { // X軸
@@ -1357,7 +1358,7 @@ export default function QuizAnalytics({
             </Typography>
             
             <Grid container spacing={2}>
-              {axisAnalysis.map((analysis, index) => (
+              {axisAnalysis.map((analysis: any, index: any) => (
                 <Grid item xs={12} md={6} key={index}>
                   <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: "bold" }}>
                     {analysis.axis.name}
@@ -2039,7 +2040,7 @@ export default function QuizAnalytics({
                               display: true,
                               position: 'top' as const,
                               labels: {
-                                font: { size: 11, weight: '500' },
+                                font: { size: 11, weight: 'normal' },
                                 usePointStyle: true,
                                 pointStyle: 'circle',
                                 boxWidth: 8,
@@ -2069,7 +2070,7 @@ export default function QuizAnalytics({
                               title: {
                                 display: true,
                                 text: quizData.axes[0]?.name || 'X軸',
-                                font: { size: 13, weight: '600' },
+                                font: { size: 13, weight: 'bold' },
                                 color: '#4a5568'
                               },
                               min: -100,
@@ -2088,7 +2089,7 @@ export default function QuizAnalytics({
                               title: {
                                 display: true,
                                 text: quizData.axes[1]?.name || 'Y軸',
-                                font: { size: 13, weight: '600' },
+                                font: { size: 13, weight: 'bold' },
                                 color: '#4a5568'
                               },
                               min: -100,
@@ -2139,7 +2140,7 @@ export default function QuizAnalytics({
                               display: true,
                               position: 'top' as const,
                               labels: {
-                                font: { size: 11, weight: '500' },
+                                font: { size: 11, weight: 'normal' },
                                 usePointStyle: true,
                                 pointStyle: 'circle',
                                 boxWidth: 8,
@@ -2169,7 +2170,7 @@ export default function QuizAnalytics({
                               title: {
                                 display: true,
                                 text: quizData.axes[0]?.name || 'X軸',
-                                font: { size: windowWidth < 768 ? 11 : 13, weight: '600' },
+                                font: { size: windowWidth < 768 ? 11 : 13, weight: 'bold' },
                                 color: '#4a5568'
                               },
                               min: -100,
@@ -2188,7 +2189,7 @@ export default function QuizAnalytics({
                               title: {
                                 display: true,
                                 text: quizData.axes[1]?.name || 'Y軸',
-                                font: { size: windowWidth < 768 ? 11 : 13, weight: '600' },
+                                font: { size: windowWidth < 768 ? 11 : 13, weight: 'bold' },
                                 color: '#4a5568'
                               },
                               min: -100,
@@ -2289,7 +2290,7 @@ export default function QuizAnalytics({
                               title: {
                                 display: true,
                                 text: questions[0]?.text?.substring(0, 30) + "..." || "質問1",
-                                font: { size: 12, weight: '600' },
+                                font: { size: 12, weight: 'bold' },
                                 color: 'white'
                               },
                               min: 0,
@@ -2308,7 +2309,7 @@ export default function QuizAnalytics({
                               title: {
                                 display: true,
                                 text: questions[1]?.text?.substring(0, 30) + "..." || "質問2",
-                                font: { size: 12, weight: '600' },
+                                font: { size: 12, weight: 'bold' },
                                 color: 'white'
                               },
                               min: 0,
@@ -2359,7 +2360,7 @@ export default function QuizAnalytics({
                               display: windowWidth >= 768,
                               position: 'top' as const,
                               labels: {
-                                font: { size: 10, weight: '500' },
+                                font: { size: 10, weight: 'normal' },
                                 color: 'white',
                                 usePointStyle: true,
                                 pointStyle: 'circle',
@@ -2390,7 +2391,7 @@ export default function QuizAnalytics({
                               title: {
                                 display: windowWidth >= 768,
                                 text: questions[0]?.text?.substring(0, 25) + "..." || "質問1",
-                                font: { size: windowWidth < 768 ? 10 : 11, weight: '600' },
+                                font: { size: windowWidth < 768 ? 10 : 11, weight: 'bold' },
                                 color: 'white'
                               },
                               min: 0,
@@ -2409,7 +2410,7 @@ export default function QuizAnalytics({
                               title: {
                                 display: windowWidth >= 768,
                                 text: questions[1]?.text?.substring(0, 25) + "..." || "質問2",
-                                font: { size: windowWidth < 768 ? 10 : 11, weight: '600' },
+                                font: { size: windowWidth < 768 ? 10 : 11, weight: 'bold' },
                                 color: 'white'
                               },
                               min: 0,
@@ -2503,7 +2504,7 @@ export default function QuizAnalytics({
                           title: {
                             display: true,
                             text: '個別回答者の4軸分析',
-                            font: { size: 14, weight: '600' }
+                            font: { size: 14, weight: 'bold' }
                           },
                           tooltip: {
                             backgroundColor: 'rgba(0,0,0,0.8)',
@@ -2573,7 +2574,6 @@ export default function QuizAnalytics({
                                   position: 'bottom' as const,
                                   labels: {
                                     font: { size: 9 },
-                                    maxWidth: 80,
                                     generateLabels: function(chart: any) {
                                       const data = chart.data;
                                       if (data.datasets.length) {
@@ -2648,7 +2648,7 @@ export default function QuizAnalytics({
                           title: {
                             display: true,
                             text: '4軸平均スコア比較',
-                            font: { size: 14, weight: '600' }
+                            font: { size: 14, weight: 'bold' }
                           },
                           tooltip: {
                             backgroundColor: 'rgba(0,0,0,0.8)',
