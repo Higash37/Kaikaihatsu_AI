@@ -184,8 +184,7 @@ export default async function handler(
         const savedId = await saveQuizResponse({
           userId: null, // 匿名回答の場合
           quizId,
-          responses: answers,
-          result: null, // 結果は別途計算・保存
+          result: answers, // responses カラムが存在しないため result として保存
         });
         console.log("回答が保存されました:", savedId);
         res.status(200).json({ id: savedId, ...responseData });
@@ -219,7 +218,10 @@ export default async function handler(
           responses = supabaseResponses.slice(0, Number(limit)).map((diagnosis) => ({
             id: diagnosis.id,
             quizId: diagnosis.quiz_id,
-            answers: diagnosis.responses || [],
+            answers: diagnosis.answers ? Object.entries(diagnosis.answers).map(([questionId, value]) => ({
+              questionId,
+              value
+            })) : [], // answersオブジェクトを配列形式に変換
             demographics: {},
             location: "",
             createdAt: diagnosis.created_at,

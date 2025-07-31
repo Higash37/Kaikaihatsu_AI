@@ -89,6 +89,8 @@ export default function QuizAnalytics({
     location: "all",
     responseDate: "all",
   });
+  const [aiInsights, setAiInsights] = useState<string>("");
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [chartTypes, setChartTypes] = useState<{ [key: string]: ChartType }>({
     overall: 'pie',
     questions: 'bar'
@@ -386,10 +388,12 @@ export default function QuizAnalytics({
 
   // 各質問の回答分布を計算（高さ変動対応）
   const getQuestionAnalytics = (questionId: string) => {
+    
     const questionResponses = filteredResponses
-      .map((response) =>
-        response.answers.find((a: any) => a.questionId === questionId)
-      )
+      .map((response) => {
+        const answer = response.answers.find((a: any) => String(a.questionId) === String(questionId));
+        return answer;
+      })
       .filter(Boolean);
 
     const distribution = {
@@ -427,10 +431,6 @@ export default function QuizAnalytics({
   const getBarChartData = (questionId: string, _questionText: string) => {
     const { distribution, stats: _stats } = getQuestionAnalytics(questionId);
     const maxValue = Math.max(...Object.values(distribution));
-
-    // デバッグ情報を出力
-    console.log(`質問 ${questionId} の分布:`, distribution);
-    console.log(`最大値: ${maxValue}`);
 
     return {
       labels: ["1", "2", "3", "4", "5"],
@@ -475,8 +475,8 @@ export default function QuizAnalytics({
 
     const data = filteredResponses
       .map((response) => {
-        const a1 = response.answers.find((a: any) => a.questionId === q1Id);
-        const a2 = response.answers.find((a: any) => a.questionId === q2Id);
+        const a1 = response.answers.find((a: any) => String(a.questionId) === String(q1Id));
+        const a2 = response.answers.find((a: any) => String(a.questionId) === String(q2Id));
 
         if (a1 && a2 && a1.value && a2.value) {
           return { x: a1.value, y: a2.value };
@@ -542,7 +542,7 @@ export default function QuizAnalytics({
         if (axisQuestions.length === 0) return 0;
 
         const questionScores = axisQuestions.map((question) => {
-          const answer = response.answers?.find((a: any) => a.questionId === question.id);
+          const answer = response.answers?.find((a: any) => String(a.questionId) === String(question.id));
           return answer ? answer.value || 0 : 0;
         });
 
@@ -579,7 +579,7 @@ export default function QuizAnalytics({
 
       const allScores = filteredResponses.flatMap((response) => {
         return axisQuestions.map((question) => {
-          const answer = response.answers?.find((a: any) => a.questionId === question.id);
+          const answer = response.answers?.find((a: any) => String(a.questionId) === String(question.id));
           return answer ? answer.value || 0 : 0;
         });
       });
@@ -621,7 +621,7 @@ export default function QuizAnalytics({
   const _getAdvancedStatistics = () => {
     const allValues = questions.map(q => {
       const values = filteredResponses
-        .map(r => r.answers.find((a: any) => a.questionId === q.id)?.value)
+        .map(r => r.answers.find((a: any) => String(a.questionId) === String(q.id))?.value)
         .filter((v): v is number => v != null);
       return { questionId: q.id, values };
     });
@@ -712,7 +712,7 @@ export default function QuizAnalytics({
       const questionResponses = filteredResponses
         .map((response) => {
           const answer = response.answers.find(
-            (a: any) => a.questionId === question.id
+            (a: any) => String(a.questionId) === String(question.id)
           );
           return answer ? answer.value : null;
         })
@@ -1223,6 +1223,113 @@ export default function QuizAnalytics({
     },
   };
 
+  // AI考察生成機能
+  const generateAIInsights = async () => {
+    const statisticalSummary = {
+      totalResponses: filteredResponses.length,
+      questionCount: questions.length,
+      averageScores: questions.map(q => {
+        const { stats } = getQuestionAnalytics(q.id);
+        return { question: q.text, average: stats.mean };
+      }),
+      responseDistribution: questions.map(q => {
+        const { distribution } = getQuestionAnalytics(q.id);
+        return { question: q.text, distribution };
+      })
+    };
+
+    try {
+      const prompt = `以下のアンケート分析データに基づいて、専門的な考察を日本語で生成してください。
+
+アンケートタイトル: ${quizTitle}
+回答者数: ${statisticalSummary.totalResponses}人
+質問数: ${statisticalSummary.questionCount}問
+
+統計データ:
+${JSON.stringify(statisticalSummary, null, 2)}
+
+以下の観点で考察を提供してください：
+1. 全体的な傾向と特徴
+2. 注目すべき回答パターン
+3. 質問間の関連性
+4. 改善提案や示唆
+
+500-800文字程度で、ビジネス資料に適した形式で記述してください。`;
+
+      const response = await fetch('/api/generate-insights', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.insights;
+      } else {
+        return "AI考察の生成に失敗しました。統計データから以下の傾向が確認できます：\n\n" +
+               `• 総回答数: ${statisticalSummary.totalResponses}人\n` +
+               `• 平均スコアが最も高い質問: ${statisticalSummary.averageScores.reduce((prev, curr) => prev.average > curr.average ? prev : curr).question}\n` +
+               "• より詳細な分析には専門的な解釈が必要です。";
+      }
+    } catch (error) {
+      console.error('AI考察生成エラー:', error);
+      return "AI考察の生成中にエラーが発生しました。手動での分析をお勧めします。";
+    }
+  };
+
+  // PowerPoint生成機能
+  const handleGenerateReport = async () => {
+    setIsGeneratingReport(true);
+    
+    try {
+      // AI考察を生成
+      const insights = await generateAIInsights();
+      setAiInsights(insights);
+
+      // PowerPoint生成APIを呼び出し
+      const reportData = {
+        title: `${quizTitle} - 分析レポート`,
+        responses: filteredResponses,
+        questions: questions,
+        insights: insights,
+        charts: {
+          // チャートデータを含める
+          overallTrends: questions.map(q => getQuestionAnalytics(q.id)),
+          correlations: questions.length >= 2 ? getScatterChartData() : null,
+        }
+      };
+
+      const response = await fetch('/api/generate-powerpoint', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(reportData),
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${quizTitle}_分析レポート.pptx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        alert('PowerPoint生成に失敗しました。');
+      }
+    } catch (error) {
+      console.error('レポート生成エラー:', error);
+      alert('レポート生成中にエラーが発生しました。');
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
+
   // データがない場合でもグラフを表示するため、条件分岐を削除
 
   return (
@@ -1235,8 +1342,8 @@ export default function QuizAnalytics({
         {quizTitle} - 分析結果
       </Typography>
 
-      {/* ビューモード切り替え */}
-      <Box sx={{ mb: 3 }}>
+      {/* ビューモード切り替えと資料発行ボタン */}
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
         <ToggleButtonGroup
           value={viewMode}
           exclusive
@@ -1246,6 +1353,41 @@ export default function QuizAnalytics({
           <ToggleButton value="basic">基本分析</ToggleButton>
           <ToggleButton value="advanced">高度分析</ToggleButton>
         </ToggleButtonGroup>
+        
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.5 }}>
+          <Button
+            variant="contained"
+            onClick={handleGenerateReport}
+            disabled={isGeneratingReport}
+            sx={{
+              backgroundColor: '#667eea !important',
+              color: 'white !important',
+              '&:hover': {
+                backgroundColor: '#5a67d8 !important',
+              },
+              '&:disabled': {
+                backgroundColor: '#9ca3af !important',
+                color: 'white !important',
+              },
+              borderRadius: 2,
+              px: 3,
+              py: 1,
+              boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+            }}
+          >
+            {isGeneratingReport ? '🔄 生成中...' : '📊 資料発行'}
+          </Button>
+          <Typography 
+            variant="caption" 
+            sx={{ 
+              color: 'text.secondary', 
+              fontSize: '0.7rem',
+              fontStyle: 'italic'
+            }}
+          >
+            ※生成物は非常に不安定です笑
+          </Typography>
+        </Box>
       </Box>
 
       {/* 4軸診断システムの座標分析（新機能） */}

@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { Quiz } from "@/types/quiz";
-import { getPublicQuizzes } from "@/utils/supabase";
+import { getPublicQuizzesWithStats } from "@/utils/supabase";
 
 // テスト用のサンプルクイズデータ
 const sampleQuizzes: Quiz[] = [
@@ -178,7 +178,7 @@ export default async function handler(
     // Supabaseから公開クイズを取得
     try {
       console.log("Supabaseからデータを取得中...");
-      const supabaseQuizzes = await getPublicQuizzes();
+      const supabaseQuizzes = await getPublicQuizzesWithStats();
       console.log("Supabaseから取得したクイズ数:", supabaseQuizzes.length);
 
       if (supabaseQuizzes.length > 0) {
@@ -194,8 +194,8 @@ export default async function handler(
           questionCount: quiz.questions?.questions?.length || 0,
           isPublic: quiz.is_public,
           tags: quiz.questions?.tags || [],
-          totalResponses: 0, // TODO: 統計から取得
-          popularity: Math.floor(Math.random() * 100), // TODO: 統計から計算
+          totalResponses: quiz.totalResponses || 0,
+          popularity: quiz.totalResponses || 0, // 実施回数を人気度として使用
           averageRating: 4.0, // TODO: 統計から計算
           questions: quiz.questions?.questions || [],
           enableDemographics: quiz.questions?.enableDemographics || false,

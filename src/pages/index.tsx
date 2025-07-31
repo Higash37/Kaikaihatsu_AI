@@ -211,7 +211,7 @@ export default function Home() {
                   >
                     <Card
                       sx={{
-                        height: "100%",
+                        height: 280, // より低い高さに調整
                         display: "flex",
                         flexDirection: "column",
                         cursor: "pointer",
@@ -221,17 +221,25 @@ export default function Home() {
                       }}
                       onClick={() => handleQuizClick(quiz.id)}
                     >
-                      <CardContent sx={{ flexGrow: 1 }}>
+                      <CardContent sx={{ 
+                        flexGrow: 1,
+                        display: "flex",
+                        flexDirection: "column",
+                        p: 2,
+                      }}>
                         <Typography
                           variant="h6"
                           component="h2"
                           sx={{
                             fontWeight: "bold",
                             mb: 1,
+                    height: "2.4em", // 高さを減らす
                             display: "-webkit-box",
                             WebkitLineClamp: 2,
                             WebkitBoxOrient: "vertical",
                             overflow: "hidden",
+                            lineHeight: 1.2,
+                            fontSize: "1.1rem", // フォントサイズを少し小さく
                           }}
                         >
                           {quiz.title}
@@ -240,11 +248,13 @@ export default function Home() {
                           variant="body2"
                           color="text.secondary"
                           sx={{
-                            mb: 2,
+                            mb: 1.5,
+                            height: "3em", // 高さを減らす
                             display: "-webkit-box",
-                            WebkitLineClamp: 3,
+                            WebkitLineClamp: 2, // 2行に減らす
                             WebkitBoxOrient: "vertical",
                             overflow: "hidden",
+                            lineHeight: 1.5,
                           }}
                         >
                           {quiz.description}
@@ -331,13 +341,20 @@ export default function Home() {
                         </Box>
 
                         {/* タグ */}
-                        <Box sx={{ mb: 2 }}>
-                          {quiz.tags.slice(0, 3).map((tag, index) => (
+                        <Box sx={{ 
+                          mb: 1.5,
+                          height: "1.8em", // タグエリアの高さを少し低く
+                          overflow: "hidden",
+                        }}>
+                          {quiz.tags.slice(0, 2).map((tag, index) => (
                             <Chip
                               key={index}
                               label={tag}
                               size="small"
-                              sx={{ mr: 0.5, mb: 0.5 }}
+                              sx={{ 
+                                mr: 0.5,
+                                fontSize: "0.7rem", // タグのフォントサイズを小さく
+                              }}
                             />
                           ))}
                         </Box>

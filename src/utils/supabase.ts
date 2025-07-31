@@ -292,18 +292,17 @@ export async function getQuizStats(quizId: string) {
     
     if (totalError) throw totalError;
 
-    // Get completed responses count
+    // Get completed responses count (全てのレコードを完了とみなす)
     const { count: completedCount, error: completedError } = await supabase
       .from('diagnoses')
       .select('*', { count: 'exact', head: true })
-      .eq('quiz_id', quizId)
-      .not('completed_at', 'is', null);
+      .eq('quiz_id', quizId);
     
     if (completedError) throw completedError;
 
     const totalResponses = totalCount || 0;
     const completedResponses = completedCount || 0;
-    const inProgressResponses = totalResponses - completedResponses;
+    const inProgressResponses = 0; // completed_atカラムがないため0に設定
 
     return {
       totalResponses,
@@ -311,7 +310,8 @@ export async function getQuizStats(quizId: string) {
       inProgressResponses
     };
   } catch (error) {
-    console.error('Error getting quiz stats:', error);
+    console.error('Error getting quiz stats for quiz', quizId, ':', error);
+    console.error('Full error details:', JSON.stringify(error, null, 2));
     return {
       totalResponses: 0,
       completedResponses: 0,
@@ -508,23 +508,39 @@ export async function saveQuizResponse(responseData: any) {
   }
 
   try {
+    console.log("Attempting to save quiz response:", {
+      userId: responseData.userId || getUserId(),
+      quizId: responseData.quizId,
+      hasResponses: !!responseData.responses,
+      hasResult: !!responseData.result
+    });
+
     // サーバーサイドではadminクライアントを使用してRLSをバイパス
     const client = typeof window === 'undefined' ? supabaseAdmin : supabase;
     
+    // まず最小限のデータで保存を試行
+    const insertData = {
+      user_id: responseData.userId || getUserId(),
+      quiz_id: responseData.quizId,
+      answers: responseData.responses || responseData.result || {},  // answersカラムに対応
+      responses: responseData.responses || responseData.result || {},  // responsesカラムに対応
+      result_data: responseData.result || responseData.responses || {},
+      created_at: new Date().toISOString(),
+    };
+    
+    console.log("Insert data:", insertData);
+    
     const { data, error } = await client
       .from('diagnoses')
-      .insert([{
-        user_id: responseData.userId || getUserId(), // デフォルトユーザーIDを使用
-        quiz_id: responseData.quizId,
-        responses: responseData.responses,
-        result_data: responseData.result,
-        completed_at: new Date().toISOString(),
-        created_at: new Date().toISOString(),
-      }])
+      .insert([insertData])
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error("Supabase insert error:", error);
+      throw error;
+    }
+    
     console.log("Quiz response saved with ID: ", data.id);
     return data.id;
   } catch (error) {
@@ -883,8 +899,8 @@ export async function getQuizDetailedStats(quizId: string) {
         stats.averageScore = scoresWithValue.reduce((sum, r) => sum + r.result_data.score, 0) / scoresWithValue.length;
       }
 
-      const completedResponses = responses.filter(r => r.completed_at);
-      stats.completionRate = (completedResponses.length / responses.length) * 100;
+      // completed_atカラムがないため、全て完了として扱う
+      stats.completionRate = 100;
     }
 
     // 統計テーブルを更新
@@ -1070,7 +1086,7 @@ export async function getAdvancedAnalytics(
         // 時系列分析
         const { data: temporalData } = await supabase
           .from('diagnoses')
-          .select('created_at, result_data, completed_at')
+          .select('created_at, result_data')
           .eq('quiz_id', quizId)
           .order('created_at', { ascending: true });
 
