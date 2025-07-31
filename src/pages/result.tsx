@@ -12,8 +12,8 @@ import React, { useState, useEffect } from "react";
 
 import Header from "@/components/Header";
 import Layout from "@/components/Layout";
-// 古いインポートを削除
-import { saveQuizResult } from "@/utils/firebase";
+// Supabaseインポートに変更
+import { saveQuizResponse } from "@/utils/supabase";
 
 // 型定義
 type Question = { 
@@ -215,9 +215,46 @@ export default function ResultPage() {
         router.replace("/");
       }
     }
-  }, [router]);
 
-  // Firestoreに結果を保存する関数
+    // 結果ページに到達時の自動保存
+    if (resultData && diagnosisResult && saveStatus === "idle") {
+      handleAutoSave();
+    }
+  }, [router, resultData, diagnosisResult, saveStatus]);
+
+  // 自動保存関数
+  const handleAutoSave = async () => {
+    if (!resultData || !diagnosisResult) return;
+
+    setSaveStatus("saving");
+    setSaveMessage("結果を自動保存しています...");
+
+    try {
+      const saveData = {
+        quizId: resultData.id,
+        userId: resultData.creatorId,
+        responses: resultData.answers,
+        result: {
+          name: diagnosisResult.resultName,
+          description: diagnosisResult.resultDescription,
+          coordinates: diagnosisResult.coordinates,
+          axisScores: diagnosisResult.axisScores,
+          traits: diagnosisResult.traits || []
+        },
+        userAgent: typeof window !== "undefined" ? window.navigator.userAgent : "",
+      };
+
+      const responseId = await saveQuizResponse(saveData);
+      setSaveStatus("saved");
+      setSaveMessage(`結果が自動保存されました！`);
+    } catch (error) {
+      console.error("自動保存エラー:", error);
+      setSaveStatus("error");
+      setSaveMessage("自動保存に失敗しました。手動で保存してください。");
+    }
+  };
+
+  // Supabaseに結果を保存する関数
   const handleSaveResult = async () => {
     if (!resultData || !diagnosisResult) {
       setSaveMessage("保存できるデータがありません。");
@@ -230,16 +267,22 @@ export default function ResultPage() {
 
     try {
       const saveData = {
-        quizTitle: resultData.title,
-        answers: resultData.answers,
-        diagnosisResult: diagnosisResult,
-        userAgent:
-          typeof window !== "undefined" ? window.navigator.userAgent : "",
+        quizId: resultData.id,
+        userId: resultData.creatorId, // 現在のユーザーID
+        responses: resultData.answers,
+        result: {
+          name: diagnosisResult.resultName,
+          description: diagnosisResult.resultDescription,
+          coordinates: diagnosisResult.coordinates,
+          axisScores: diagnosisResult.axisScores,
+          traits: diagnosisResult.traits || []
+        },
+        userAgent: typeof window !== "undefined" ? window.navigator.userAgent : "",
       };
 
-      const docId = await saveQuizResult(saveData);
+      const responseId = await saveQuizResponse(saveData);
       setSaveStatus("saved");
-      setSaveMessage(`結果が保存されました！ ID: ${docId}`);
+      setSaveMessage(`結果が保存されました！ ID: ${responseId}`);
     } catch (error) {
       console.error("保存エラー:", error);
       setSaveStatus("error");

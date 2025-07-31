@@ -366,11 +366,16 @@ function CreateWizard() {
         throw new Error(errorData.error || "アンケートの保存に失敗しました。");
       }
 
-      const quizData = await response.json();
+      const responseData = await response.json();
+
+      // エラーレスポンスの場合
+      if (!response.ok || responseData.error) {
+        throw new Error(responseData.error || "アンケートの保存に失敗しました。");
+      }
 
       // 生成されたデータをセッションストレージに保存
       if (typeof window !== "undefined") {
-        window.sessionStorage.setItem("quizData", JSON.stringify(quizData));
+        window.sessionStorage.setItem("quizData", JSON.stringify(responseData));
       }
 
       // 成功メッセージを表示

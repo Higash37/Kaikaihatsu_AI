@@ -21,10 +21,10 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   console.log('AuthProvider initialized - using default user')
   
-  // 常にデフォルトユーザーを設定
+  // 常にデフォルトユーザーを設定 (既存のユーザーIDを使用)
   const defaultUser = {
-    id: 'default-user-001',
-    email: 'user@example.com',
+    id: 'c05c1fa1-bf63-46ff-bde9-2a78c814abdc',
+    email: 'higashionna37@icloud.com',
     app_metadata: {},
     user_metadata: {},
     aud: 'authenticated',
@@ -32,9 +32,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   } as User;
   
   const defaultProfile = {
-    id: 'default-user-001',
-    username: 'デフォルトユーザー',
-    email: 'user@example.com',
+    id: 'c05c1fa1-bf63-46ff-bde9-2a78c814abdc',
+    username: 'higashionna37@icloud.com',
+    email: 'higashionna37@icloud.com',
     bio: null,
     avatar_url: null,
     is_public: true,

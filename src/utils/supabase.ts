@@ -6,8 +6,22 @@ import { getUserId } from './auth';
 // Supabase client initialization
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+console.log("[supabase] Environment check:", {
+  hasUrl: !!supabaseUrl,
+  hasAnonKey: !!supabaseAnonKey,
+  hasServiceKey: !!supabaseServiceKey,
+  serviceKeyLength: supabaseServiceKey?.length || 0
+});
+
+// クライアントサイド用（制限あり）
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// サーバーサイド用（フル権限）
+export const supabaseAdmin = supabaseServiceKey 
+  ? createClient(supabaseUrl, supabaseServiceKey)
+  : supabase; // フォールバック
 
 // Check if Supabase is properly configured
 const isSupabaseAvailable = () => {
@@ -232,10 +246,13 @@ export async function createQuiz(quizData: any) {
   }
 
   try {
-    const { data, error } = await supabase
+    // サーバーサイドではadminクライアントを使用してRLSをバイパス
+    const client = typeof window === 'undefined' ? supabaseAdmin : supabase;
+    
+    const { data, error } = await client
       .from('quizzes')
       .insert([{
-        user_id: getUserId(), // 常にデフォルトユーザーIDを使用
+        user_id: quizData.userId || getUserId(), // quizData.userIdを優先、なければデフォルトユーザーID
         title: quizData.title,
         description: quizData.description,
         category: quizData.category,
@@ -311,7 +328,12 @@ export async function getQuizzesWithStats(userId?: string) {
   }
 
   try {
-    let query = supabase
+    console.log("[getQuizzesWithStats] Starting query for userId:", userId);
+    
+    // サーバーサイドではadminクライアントを使用
+    const client = typeof window === 'undefined' ? supabaseAdmin : supabase;
+    
+    let query = client
       .from('quizzes')
       .select('*')
       .order('created_at', { ascending: false });
@@ -323,26 +345,45 @@ export async function getQuizzesWithStats(userId?: string) {
 
     const { data: quizzes, error } = await query;
 
-    if (error) throw error;
+    if (error) {
+      console.error("[getQuizzesWithStats] Supabase query error:", error);
+      throw error;
+    }
     
-    if (!quizzes) return [];
+    if (!quizzes) {
+      console.log("[getQuizzesWithStats] No quizzes found");
+      return [];
+    }
+
+    console.log("[getQuizzesWithStats] Found", quizzes.length, "quizzes");
 
     // Get statistics for each quiz in parallel
     const quizzesWithStats = await Promise.all(
       quizzes.map(async (quiz) => {
-        const stats = await getQuizStats(quiz.id);
-        return {
-          ...quiz,
-          totalResponses: stats.totalResponses,
-          completedResponses: stats.completedResponses,
-          inProgressResponses: stats.inProgressResponses
-        };
+        try {
+          const stats = await getQuizStats(quiz.id);
+          return {
+            ...quiz,
+            totalResponses: stats.totalResponses,
+            completedResponses: stats.completedResponses,
+            inProgressResponses: stats.inProgressResponses
+          };
+        } catch (statsError) {
+          console.error("[getQuizzesWithStats] Error getting stats for quiz", quiz.id, ":", statsError);
+          // エラーが発生してもクイズ自体は返す
+          return {
+            ...quiz,
+            totalResponses: 0,
+            completedResponses: 0,
+            inProgressResponses: 0
+          };
+        }
       })
     );
 
     return quizzesWithStats;
   } catch (error) {
-    console.error("Error getting quizzes with stats: ", error);
+    console.error("[getQuizzesWithStats] Error getting quizzes with stats: ", error);
     throw error;
   }
 }
@@ -467,7 +508,10 @@ export async function saveQuizResponse(responseData: any) {
   }
 
   try {
-    const { data, error } = await supabase
+    // サーバーサイドではadminクライアントを使用してRLSをバイパス
+    const client = typeof window === 'undefined' ? supabaseAdmin : supabase;
+    
+    const { data, error } = await client
       .from('diagnoses')
       .insert([{
         user_id: responseData.userId || getUserId(), // デフォルトユーザーIDを使用

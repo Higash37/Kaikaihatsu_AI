@@ -42,10 +42,15 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<QuizData | ErrorResponse>
 ) {
+  console.log("[generate-quiz] API called with method:", req.method);
+
   if (req.method !== "POST") {
     res.setHeader("Allow", ["POST"]);
     return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
   }
+
+  console.log("[generate-quiz] Request body keys:", Object.keys(req.body));
+  console.log("[generate-quiz] Request body:", JSON.stringify(req.body, null, 2));
 
   const {
     theme,
@@ -93,6 +98,7 @@ export default async function handler(
   }
 
   try {
+    console.log("[generate-quiz] Starting quiz generation...");
     let parsedContent: QuizData;
 
     // ウィザードから来た場合は既存データを使用、そうでなければAI生成
@@ -257,9 +263,10 @@ ${theme}
         creatorName: quizData.creatorName,
         isPublic: quizData.isPublic,
         title: quizData.title,
+        questionCount: quizData.questions.length,
       });
 
-      const savedId = await createQuiz({
+      const createQuizData = {
         userId: quizData.creatorId,
         title: quizData.title,
         description: `${theme}に関する診断クイズ`,
@@ -267,18 +274,28 @@ ${theme}
         difficulty: 'medium',
         isPublic: quizData.isPublic,
         questions: quizData,
-      });
+      };
+      
+      console.log("createQuiz関数に渡すデータ:", JSON.stringify(createQuizData, null, 2));
+
+      const savedId = await createQuiz(createQuizData);
       
       console.log("クイズがSupabaseに保存されました:", savedId);
     } catch (supabaseError) {
       console.error("Supabase保存エラー:", supabaseError);
-      // Supabaseエラーでもクイズデータは返す
+      // Supabaseエラーの場合はエラーを返す
+      res.status(500).json({ 
+        error: "クイズの保存に失敗しました。", 
+        details: supabaseError instanceof Error ? supabaseError.message : "Unknown database error"
+      });
+      return;
     }
 
     res.status(200).json(quizData);
   } catch (error) {
-    console.error("AIクイズ生成エラー:", error);
-    console.error("Error details:", error instanceof Error ? error.message : error);
+    console.error("[generate-quiz] AIクイズ生成エラー:", error);
+    console.error("[generate-quiz] Error details:", error instanceof Error ? error.message : error);
+    console.error("[generate-quiz] Error stack:", error instanceof Error ? error.stack : "No stack trace");
     res.status(500).json({ 
       error: "クイズの生成に失敗しました。", 
       details: error instanceof Error ? error.message : "Unknown error"

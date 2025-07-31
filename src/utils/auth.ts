@@ -8,11 +8,11 @@ export interface User {
   avatar?: string;
 }
 
-// Default user for development
+// Default user for development (using existing UUID)
 const DEFAULT_USER: User = {
-  id: 'default-user-001',
-  email: 'user@example.com',
-  name: 'デフォルトユーザー',
+  id: 'c05c1fa1-bf63-46ff-bde9-2a78c814abdc',
+  email: 'higashionna37@icloud.com',
+  name: 'higashionna37@icloud.com',
   avatar: undefined
 };
 

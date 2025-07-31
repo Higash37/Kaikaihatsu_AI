@@ -1,6 +1,11 @@
 {
   "permissions": {
-    "allow": ["Bash(ls:*)", "Bash(npm install:*)"],
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(npm install:*)",
+      "Bash(convert:*)",
+      "Bash(node:*)"
+    ],
     "deny": [
       "Bash(npm run dev)",
       "Bash(npx next dev)",
