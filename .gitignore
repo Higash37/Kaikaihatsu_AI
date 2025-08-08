@@ -6,6 +6,12 @@ node_modules/
 out/
 dist/
 
+# PWA files (auto-generated)
+public/sw.js
+public/sw.js.map
+public/workbox-*.js
+public/workbox-*.js.map
+
 # OS
 .DS_Store
 

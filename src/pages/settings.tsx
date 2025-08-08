@@ -143,7 +143,7 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ title, children }) =>
 };
 
 const SettingsPage: React.FC = () => {
-  const { user, profile } = useAuth();
+  const { profile } = useAuth();
   const theme = useTheme();
   const [notifications, setNotifications] = useState(true);
   const [autoSave, setAutoSave] = useState(true);

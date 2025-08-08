@@ -17,14 +17,14 @@ export async function createClient() {
         set(name: string, value: string, options: CookieOptions) {
           try {
             cookieStore.set({ name, value, ...options })
-          } catch (_error) {
+          } catch {
             // サーバーコンポーネントでのcookie設定エラーを処理
           }
         },
         remove(name: string, options: CookieOptions) {
           try {
             cookieStore.set({ name, value: '', ...options })
-          } catch (_error) {
+          } catch {
             // サーバーコンポーネントでのcookie削除エラーを処理
           }
         },

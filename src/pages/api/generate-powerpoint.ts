@@ -84,11 +84,11 @@ export default async function handler(
     });
 
     const summaryData = [
-      ['項目', '値'],
-      ['総回答数', `${responses.length}件`],
-      ['質問数', `${questions.length}問`],
-      ['分析日時', new Date().toLocaleString('ja-JP')],
-      ['回答率', '100%'], // 完了した回答のみを対象とする
+      [{ text: '項目' }, { text: '値' }],
+      [{ text: '総回答数' }, { text: `${responses.length}件` }],
+      [{ text: '質問数' }, { text: `${questions.length}問` }],
+      [{ text: '分析日時' }, { text: new Date().toLocaleString('ja-JP') }],
+      [{ text: '回答率' }, { text: '100%' }], // 完了した回答のみを対象とする
     ];
 
     summarySlide.addTable(summaryData, {
@@ -123,7 +123,6 @@ export default async function handler(
       });
     });
 
-    const totalAnswers = Object.values(overallDistribution).reduce((sum, count) => sum + count, 0);
     
     // 円グラフデータを作成
     const pieChartData = Object.entries(overallDistribution)
@@ -185,18 +184,18 @@ export default async function handler(
           title: '回答分布',
           chartColors: ['667eea'],
           barDir: 'col',
-          valueAxisTitle: '回答数',
+          valAxisTitle: '回答数',
           catAxisTitle: '回答値'
         });
 
         // 統計情報テーブル
         const statsData = [
-          ['統計項目', '値'],
-          ['回答数', `${Object.values(questionAnalytics.distribution).reduce((sum, count) => sum + (count as number), 0)}人`],
-          ['平均値', `${questionAnalytics.stats?.mean?.toFixed(2) || 'N/A'}`],
-          ['標準偏差', `${questionAnalytics.stats?.std?.toFixed(2) || 'N/A'}`],
-          ['中央値', `${questionAnalytics.stats?.median || 'N/A'}`],
-          ['最頻値', `${questionAnalytics.stats?.mode || 'N/A'}`]
+          [{ text: '統計項目' }, { text: '値' }],
+          [{ text: '回答数' }, { text: `${Object.values(questionAnalytics.distribution).reduce((sum: number, count) => sum + (count as number), 0)}人` }],
+          [{ text: '平均値' }, { text: `${questionAnalytics.stats?.mean?.toFixed(2) || 'N/A'}` }],
+          [{ text: '標準偏差' }, { text: `${questionAnalytics.stats?.std?.toFixed(2) || 'N/A'}` }],
+          [{ text: '中央値' }, { text: `${questionAnalytics.stats?.median || 'N/A'}` }],
+          [{ text: '最頻値' }, { text: `${questionAnalytics.stats?.mode || 'N/A'}` }]
         ];
 
         questionSlide.addTable(statsData, {
@@ -249,7 +248,7 @@ export default async function handler(
               showTitle: true,
               title: `${questions[0]?.text?.substring(0, 20) || '質問1'}... vs ${questions[1]?.text?.substring(0, 20) || '質問2'}...`,
               chartColors: ['667eea'],
-              valueAxisTitle: (questions[1]?.text?.substring(0, 15) || 'Y軸') + '...',
+              valAxisTitle: (questions[1]?.text?.substring(0, 15) || 'Y軸') + '...',
               catAxisTitle: (questions[0]?.text?.substring(0, 15) || 'X軸') + '...'
             });
           }
@@ -348,7 +347,7 @@ export default async function handler(
       showTitle: true,
       title: '週別回答数の推移',
       chartColors: ['667eea'],
-      valueAxisTitle: '回答数',
+      valAxisTitle: '回答数',
       catAxisTitle: '期間'
     });
 
@@ -386,7 +385,7 @@ export default async function handler(
       title: '各質問の平均スコア',
       chartColors: ['667eea', 'FF6B6B', '66BB6A', 'FFA726', 'AB47BC', '26C6DA'],
       barDir: 'bar', // 横棒グラフ
-      valueAxisTitle: '平均スコア（1-5）',
+      valAxisTitle: '平均スコア（1-5）',
       catAxisTitle: '質問'
     });
 
@@ -431,7 +430,7 @@ export default async function handler(
             console.error(`座標データ作成エラー（回答者${index + 1}）:`, error);
             return null;
           }
-        }).filter(data => data !== null);
+        }).filter((data: any): data is any => data !== null);
 
         // 座標散布図を追加（データが存在する場合のみ）
         if (coordinateData.length > 0) {
@@ -444,7 +443,7 @@ export default async function handler(
             showTitle: true,
             title: '4軸診断座標分布',
             chartColors: ['667eea', 'FF6B6B', '66BB6A', 'FFA726'],
-            valueAxisTitle: `${questions[2]?.text?.substring(0, 15) || 'Y軸'}...`,
+            valAxisTitle: `${questions[2]?.text?.substring(0, 15) || 'Y軸'}...`,
             catAxisTitle: `${questions[0]?.text?.substring(0, 15) || 'X軸'}...`
           });
         }
@@ -514,12 +513,11 @@ export default async function handler(
     console.log('PowerPointファイル生成中...');
     
     // PowerPointファイルを生成
-    const pptxBuffer = await pptx.write('base64');
-    const buffer = Buffer.from(pptxBuffer, 'base64');
+    const pptxBuffer = await pptx.write({ outputType: 'base64' });
+    const buffer = Buffer.from(pptxBuffer as string, 'base64');
 
     console.log('PowerPointファイル生成完了:', {
-      bufferSize: buffer.length,
-      slideCount: pptx.slides.length
+      bufferSize: buffer.length
     });
 
     // レスポンスヘッダーを設定

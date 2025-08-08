@@ -5,7 +5,9 @@
       "Bash(npm install:*)",
       "Bash(convert:*)",
       "Bash(node:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)"
     ],
     "deny": [
       "Bash(npm run dev)",

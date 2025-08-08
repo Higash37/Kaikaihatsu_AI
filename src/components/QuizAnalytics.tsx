@@ -76,7 +76,6 @@ interface FilterOptions {
 type ChartType = 'bar' | 'pie' | 'line' | 'scatter' | 'radar' | 'stats';
 
 export default function QuizAnalytics({
-  quizId,
   quizTitle,
   responses,
   questions,
@@ -89,7 +88,6 @@ export default function QuizAnalytics({
     location: "all",
     responseDate: "all",
   });
-  const [aiInsights, setAiInsights] = useState<string>("");
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [chartTypes, setChartTypes] = useState<{ [key: string]: ChartType }>({
     overall: 'pie',
@@ -430,7 +428,6 @@ export default function QuizAnalytics({
   // 棒グラフのデータ（高さ変動対応）
   const getBarChartData = (questionId: string, _questionText: string) => {
     const { distribution, stats: _stats } = getQuestionAnalytics(questionId);
-    const maxValue = Math.max(...Object.values(distribution));
 
     return {
       labels: ["1", "2", "3", "4", "5"],
@@ -1286,7 +1283,6 @@ ${JSON.stringify(statisticalSummary, null, 2)}
     try {
       // AI考察を生成
       const insights = await generateAIInsights();
-      setAiInsights(insights);
 
       // PowerPoint生成APIを呼び出し
       const reportData = {
