@@ -215,7 +215,6 @@ export const bulkExport = async (exportConfigs: ExportData[]): Promise<void> => 
 
   for (const config of exportConfigs) {
     let content: string;
-    let mimeType: string;
 
     switch (config.format) {
       case 'csv': {

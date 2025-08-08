@@ -35,7 +35,7 @@ export default function handler(
         data: { nextPage },
         message: "ナビゲーション情報を取得しました",
       });
-    } catch (_error) {
+    } catch {
       res.status(500).json({
         success: false,
         error: "ナビゲーション処理中にエラーが発生しました",

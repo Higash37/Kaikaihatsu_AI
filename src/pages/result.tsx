@@ -126,7 +126,7 @@ export default function ResultPage() {
         userAgent: typeof window !== "undefined" ? window.navigator.userAgent : "",
       };
 
-      const responseId = await saveQuizResponse(saveData);
+      await saveQuizResponse(saveData);
       setSaveStatus("saved");
       setSaveMessage(`結果が自動保存されました！`);
     } catch (error) {
