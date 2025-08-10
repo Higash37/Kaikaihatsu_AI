@@ -8,6 +8,20 @@ import node from "eslint-plugin-node";
 import jsxA11y from "eslint-plugin-jsx-a11y";
 
 export default [
+  {
+    ignores: [
+      "node_modules/**",
+      ".next/**", 
+      "out/**",
+      "dist/**",
+      "build/**",
+      "jest.setup.js",
+      "*.config.js",
+      "*.config.mjs",
+      "next.config.mjs",
+      "tsconfig.tsbuildinfo"
+    ]
+  },
   js.configs.recommended,
   {
     files: ["**/*.ts", "**/*.tsx"],
