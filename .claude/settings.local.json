@@ -12,7 +12,8 @@
       "mcp__ide__getDiagnostics",
       "Bash(npm run lint)",
       "Bash(npx tsc:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(npx eslint:*)"
     ],
     "deny": [
       "Bash(npm run dev)",
