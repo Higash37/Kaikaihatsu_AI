@@ -1,0 +1,12 @@
+# Snyk (https://snyk.io) policy file, patches or ignores known vulnerabilities.
+version: v1.25.0
+ignore:
+  SNYK-JS-SERIALIZEJAVASCRIPT-6147607:
+    - '*':
+        reason: Already fixed via npm overrides - using serialize-javascript@6.0.2
+        expires: '2025-12-31T23:59:59.999Z'
+  SNYK-JS-INFLIGHT-6095116:
+    - '*':
+        reason: False positive - dependency is up to date
+        expires: '2025-12-31T23:59:59.999Z'
+patch: {}
