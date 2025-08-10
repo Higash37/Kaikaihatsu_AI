@@ -1,5 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 
+import { validateInsightsData } from '@/lib/validation/api';
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -9,7 +11,9 @@ export default async function handler(
   }
 
   try {
-    const { prompt } = req.body;
+    // 入力データの検証
+    const validatedData = validateInsightsData(req.body);
+    const { prompt } = validatedData;
 
     // OpenAI API キーの確認
     const openaiApiKey = process.env.OPENAI_API_KEY;
@@ -57,8 +61,19 @@ export default async function handler(
     res.status(200).json({ insights });
   } catch (error) {
     console.error('AI考察生成エラー:', error);
+    
+    // バリデーションエラーの場合は400を返す
+    if (error instanceof Error && error.message.includes('必要があります')) {
+      return res.status(400).json({ 
+        error: 'バリデーションエラー',
+        details: error.message
+      });
+    }
+    
+    // その他のエラーはフォールバック考察を返す
+    const fallbackPrompt = typeof req.body?.prompt === 'string' ? req.body.prompt : '';
     res.status(200).json({
-      insights: generateFallbackInsights(req.body.prompt)
+      insights: generateFallbackInsights(fallbackPrompt)
     });
   }
 }

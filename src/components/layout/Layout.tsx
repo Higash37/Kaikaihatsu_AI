@@ -2,7 +2,7 @@ import { Box } from "@mui/material";
 import { useRouter } from "next/router";
 import React from "react";
 
-import TabBarFooter from "./TabBarFooter";
+import TabBarFooter from "./NavigationBar";
 
 interface LayoutProps {
   children: React.ReactNode;

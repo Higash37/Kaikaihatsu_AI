@@ -20,12 +20,12 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/router";
 import React, { useState } from "react";
 
-import { useAuth } from "../contexts/SupabaseAuthContext";
+import { useAuth } from "../contexts/AuthContext";
 
-import CreateModeModal from "@/components/CreateModeModal";
-import Header from "@/components/Header";
-import Layout from "@/components/Layout";
-import ProtectedRoute from "@/components/ProtectedRoute";
+import CreateModeModal from "@/components/ui/CreateModeModal";
+import Header from "@/components/layout/Header";
+import Layout from "@/components/layout/Layout";
+import ProtectedRoute from "@/components/shared/ProtectedRoute";
 
 function Create() {
   const [theme, setTheme] = useState("");

@@ -16,10 +16,10 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/router";
 import React, { useState, useEffect } from "react";
 
-import Header from "@/components/Header";
-import Layout from "@/components/Layout";
+import Header from "@/components/layout/Header";
+import Layout from "@/components/layout/Layout";
 import { Quiz } from "@/types/quiz";
-import { getSafeDisplayName } from "@/utils/userDisplay";
+import { getSafeDisplayName } from "@/utils/user-display";
 
 export default function Browse() {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);

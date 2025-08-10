@@ -4,7 +4,7 @@ import {
   CircleBoxMiddleRight,
   CircleBoxBigright,
   CircleBoxSmall,
-} from "@/components/QuizHeart";
+} from "@/components/quiz/HeartIcon";
 import { Question, Scores } from "@/types";
 
 // 診断機能で使用するコンポーネントをエクスポート

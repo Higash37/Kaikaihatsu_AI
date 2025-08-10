@@ -12,14 +12,14 @@ import {
 import { useRouter } from "next/router";
 import React, { useState, useCallback } from "react";
 
-import AxisCoordinateInput from "@/components/AxisCoordinateInput";
-import Header from "@/components/Header";
-import Layout from "@/components/Layout";
-import ProgressGauge from "@/components/ProgressGauge";
-import ProtectedRoute from "@/components/ProtectedRoute";
-import QuestionEditor from "@/components/QuestionEditor";
-import ResultPlacementGrid from "@/components/ResultPlacementGrid";
-import { useAuth } from "@/contexts/SupabaseAuthContext";
+import AxisCoordinateInput from "@/components/forms/CoordinateInput";
+import Header from "@/components/layout/Header";
+import Layout from "@/components/layout/Layout";
+import ProgressGauge from "@/components/ui/ProgressGauge";
+import ProtectedRoute from "@/components/shared/ProtectedRoute";
+import QuestionEditor from "@/components/forms/QuestionEditor";
+import ResultPlacementGrid from "@/components/quiz/ResultGrid";
+import { useAuth } from "@/contexts/AuthContext";
 
 // ステップ定義
 const STEPS = [

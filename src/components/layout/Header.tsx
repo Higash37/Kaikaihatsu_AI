@@ -25,9 +25,9 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useState } from "react";
 
-import { useAuth } from "../contexts/SupabaseAuthContext";
+import { useAuth } from "../../contexts/AuthContext";
 
-import { getUserInitials, getSafeDisplayName } from "@/utils/userDisplay";
+import { getUserInitials, getSafeDisplayName } from "@/utils/user-display";
 
 const Header = () => {
   const router = useRouter();

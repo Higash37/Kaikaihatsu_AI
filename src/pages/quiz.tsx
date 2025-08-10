@@ -4,15 +4,15 @@ import { useRouter } from "next/router";
 import { useState, useEffect, useMemo } from "react";
 import React from "react";
 
-import Header from "@/components/Header";
-import Layout from "@/components/Layout";
+import Header from "@/components/layout/Header";
+import Layout from "@/components/layout/Layout";
 import {
   CircleBoxBigleft,
   CircleBoxMiddleLeft,
   CircleBoxMiddleRight,
   CircleBoxBigright,
   CircleBoxSmall,
-} from "@/components/QuizHeart";
+} from "@/components/quiz/HeartIcon";
 
 // 新しいデータ構造に合わせた型定義
 type Question = {

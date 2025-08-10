@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import OpenAI from "openai";
 
+import { validateQuizGenerationData } from '@/lib/validation/api';
 import { createQuiz } from "@/utils/supabase";
 
 // OpenAI APIクライアントの初期化（APIキーがある場合のみ）
@@ -49,55 +50,36 @@ export default async function handler(
     return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
   }
 
-  console.log("[generate-quiz] Request body keys:", Object.keys(req.body));
-  console.log("[generate-quiz] Request body:", JSON.stringify(req.body, null, 2));
-
-  const {
-    theme,
-    questionCount = 10,
-    tags = [],
-    isPublic = true,
-    enableDemographics = false,
-    enableLocationTracking = false,
-    enableRating = false,
-    creatorId,
-    creatorName,
-    // ウィザードから来たデータ
-    isWizardCreated = false,
-    questions: wizardQuestions,
-    results: wizardResults,
-    axes: wizardAxes,
-    resultType,
-  } = req.body;
-
-  if (!theme || typeof theme !== "string") {
-    return res.status(400).json({ error: "テーマを正しく指定してください。" });
-  }
-
-  if (!creatorId || !creatorName) {
-    return res.status(400).json({ error: "作成者情報が必要です。" });
-  }
-
-  if (
-    !questionCount ||
-    typeof questionCount !== "number" ||
-    questionCount < 5 ||
-    questionCount > 30
-  ) {
-    return res
-      .status(400)
-      .json({ error: "問題数は5〜30の範囲で指定してください。" });
-  }
-
-  // OpenAI APIキーが設定されていない場合
-  if (!openai) {
-    return res.status(400).json({
-      error:
-        "OpenAI APIキーが設定されていません。クイズ生成機能は利用できません。",
-    });
-  }
-
   try {
+    console.log("[generate-quiz] Request body keys:", Object.keys(req.body));
+    console.log("[generate-quiz] Request body:", JSON.stringify(req.body, null, 2));
+
+    // 入力データの検証
+    const validatedData = validateQuizGenerationData(req.body);
+    const {
+      theme,
+      questionCount,
+      tags,
+      isPublic,
+      enableDemographics,
+      enableLocationTracking,
+      enableRating,
+      creatorId,
+      creatorName,
+      isWizardCreated,
+      questions: wizardQuestions,
+      results: wizardResults,
+      axes: wizardAxes,
+      resultType,
+    } = validatedData;
+
+    // OpenAI APIキーが設定されていない場合
+    if (!openai) {
+      return res.status(400).json({
+        error:
+          "OpenAI APIキーが設定されていません。クイズ生成機能は利用できません。",
+      });
+    }
     console.log("[generate-quiz] Starting quiz generation...");
     let parsedContent: QuizData;
 
@@ -293,9 +275,18 @@ ${theme}
 
     res.status(200).json(quizData);
   } catch (error) {
-    console.error("[generate-quiz] AIクイズ生成エラー:", error);
+    console.error("[generate-quiz] エラー:", error);
     console.error("[generate-quiz] Error details:", error instanceof Error ? error.message : error);
     console.error("[generate-quiz] Error stack:", error instanceof Error ? error.stack : "No stack trace");
+    
+    // バリデーションエラーの場合は400を返す
+    if (error instanceof Error && error.message.includes('必要があります')) {
+      return res.status(400).json({ 
+        error: 'バリデーションエラー',
+        details: error.message
+      });
+    }
+    
     res.status(500).json({ 
       error: "クイズの生成に失敗しました。", 
       details: error instanceof Error ? error.message : "Unknown error"

@@ -3,7 +3,7 @@ import { Box, BottomNavigation, BottomNavigationAction } from "@mui/material";
 import { useRouter } from "next/router";
 import { useState, useEffect } from "react";
 
-import { useAuth } from "../contexts/SupabaseAuthContext";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface TabBarFooterProps {
   show?: boolean;

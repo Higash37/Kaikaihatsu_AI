@@ -12,9 +12,9 @@ import {
 import { useRouter } from "next/router";
 import React, { useState } from "react";
 
-import Header from "../components/Header";
-import Layout from "../components/Layout";
-import { useAuth } from "../contexts/SupabaseAuthContext";
+import Header from "../components/layout/Header";
+import Layout from "../components/layout/Layout";
+import { useAuth } from "../contexts/AuthContext";
 
 const AuthPage: React.FC = () => {
   const [tabValue, setTabValue] = useState(0);

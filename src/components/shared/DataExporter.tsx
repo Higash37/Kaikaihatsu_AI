@@ -52,7 +52,7 @@ import {
   transformStatisticsData,
   ExportHistory,
   transformData,
-} from '@/utils/dataExport';
+} from '@/utils/data-export';
 import {
   getQuizzes,
   getQuizDetailedStats,

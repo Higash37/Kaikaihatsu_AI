@@ -2,7 +2,7 @@ import { Box, Container, Typography, Button } from "@mui/material";
 import { useRouter } from "next/router";
 import React from "react";
 
-import { useAuth } from "../contexts/SupabaseAuthContext";
+import { useAuth } from "../../contexts/AuthContext";
 
 const Footer: React.FC = () => {
   const { user, profile, signOut } = useAuth();

@@ -17,7 +17,7 @@ import {
 } from "@mui/material";
 import React, { useState, useEffect, useCallback } from "react";
 
-import { useAuth } from "../contexts/SupabaseAuthContext";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface UserProfileData {
   age: number;

@@ -1,6 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import PptxGenJS from 'pptxgenjs';
 
+import { validatePowerPointData } from '@/lib/validation/api';
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -11,13 +13,10 @@ export default async function handler(
 
   try {
     console.log('PowerPoint生成開始');
-    const { title, responses, questions, insights, charts } = req.body;
     
-    // データ検証
-    if (!title || !responses || !questions) {
-      console.error('必要なデータが不足:', { title: !!title, responses: !!responses, questions: !!questions });
-      return res.status(400).json({ error: '必要なデータが不足しています' });
-    }
+    // 入力データの検証
+    const validatedData = validatePowerPointData(req.body);
+    const { title, responses, questions, insights, charts } = validatedData;
     
     console.log('データ受信:', {
       title,
@@ -163,7 +162,7 @@ export default async function handler(
       });
 
       // 回答分布データを取得
-      const questionAnalytics = charts.overallTrends[index];
+      const questionAnalytics = charts?.overallTrends?.[index];
       if (questionAnalytics && questionAnalytics.distribution) {
         // 棒グラフデータを作成
         const barChartData = Object.entries(questionAnalytics.distribution)
@@ -365,7 +364,7 @@ export default async function handler(
 
     // 質問別平均スコアデータを作成
     const comparisonData = questions.map((question: any, index: number) => {
-      const analytics = charts.overallTrends[index];
+      const analytics = charts?.overallTrends?.[index];
       const avgScore = analytics?.stats?.mean || 3;
       return {
         name: `質問${index + 1}`,
@@ -531,6 +530,15 @@ export default async function handler(
   } catch (error) {
     console.error('PowerPoint生成エラー:', error);
     console.error('エラースタック:', error instanceof Error ? error.stack : error);
+    
+    // バリデーションエラーの場合は400を返す
+    if (error instanceof Error && error.message.includes('必要があります')) {
+      return res.status(400).json({ 
+        error: 'バリデーションエラー',
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
     
     // より詳細なエラー情報を返す
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
