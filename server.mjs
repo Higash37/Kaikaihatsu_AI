@@ -22,17 +22,20 @@ const pool = new Pool(
         ssl: { rejectUnauthorized: false }, // Render用
       }
     : {
-        user: 'postgres',
-        host: 'localhost',
-        database: 'kaikaihatsu_test1',
-        password: '2813210',
-        port: 5432,
+        user: process.env.DB_USER || 'postgres',
+        host: process.env.DB_HOST || 'localhost',
+        database: process.env.DB_NAME || 'kaikaihatsu_test1',
+        password: process.env.DB_PASSWORD,
+        port: parseInt(process.env.DB_PORT) || 5432,
       },
 )
 
 // Express アプリの起動
 nextApp.prepare().then(() => {
   const app = express()
+  
+  // セキュリティ設定
+  app.disable('x-powered-by')
 
   // CORS 設定（.env から読み込み）
   const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000']

@@ -1310,7 +1310,8 @@ ${JSON.stringify(statisticalSummary, null, 2)}
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${quizTitle}_分析レポート.pptx`;
+        const sanitizedTitle = quizTitle.replace(/[<>:"/\\|?*]/g, '_').slice(0, 50);
+        a.download = `${sanitizedTitle}_分析レポート.pptx`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);

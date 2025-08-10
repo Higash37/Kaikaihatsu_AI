@@ -66,9 +66,9 @@ const AuthPage: React.FC = () => {
 
     try {
       // RFC 2606準拠のテスト用ドメインを使用
-      const testEmail = "testuser@example.com";
-      const testUsername = "テストユーザー";
-      const testPassword = "password123";
+      const testEmail = process.env.NEXT_PUBLIC_TEST_EMAIL || "testuser@example.com";
+      const testUsername = process.env.NEXT_PUBLIC_TEST_USERNAME || "テストユーザー";
+      const testPassword = process.env.NEXT_PUBLIC_TEST_PASSWORD || `test_${Date.now()}`;
 
       // サインアップを試行、既に存在する場合はログイン
       try {
