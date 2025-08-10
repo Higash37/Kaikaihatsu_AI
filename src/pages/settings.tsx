@@ -36,9 +36,9 @@ import {
 } from "@mui/material";
 import React, { useState } from "react";
 
-import Layout from "../components/Layout";
-import ProtectedRoute from "../components/ProtectedRoute";
-import { useAuth } from "../contexts/SupabaseAuthContext";
+import Layout from "../components/layout/Layout";
+import ProtectedRoute from "../components/shared/ProtectedRoute";
+import { useAuth } from "../contexts/AuthContext";
 
 // カスタムListItemコンポーネント
 interface SettingsListItemProps {

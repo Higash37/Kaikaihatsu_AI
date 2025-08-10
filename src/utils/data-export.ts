@@ -1,5 +1,7 @@
 // データエクスポートユーティリティ
-import { getSafeDisplayName } from './userDisplay';
+import { getSafeDisplayName } from './user-display';
+
+import { safeDownload } from '@/lib/security/sanitization';
 
 export interface ExportData {
   filename: string;
@@ -117,16 +119,9 @@ const escapeXML = (str: string): string => {
     .replace(/'/g, '&#39;');
 };
 
-// ファイルダウンロード
+// ファイルダウンロード - セキュアな実装
 const downloadBlob = (blob: Blob, filename: string): void => {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  safeDownload(blob, filename);
 };
 
 // クイズデータをエクスポート用に変換

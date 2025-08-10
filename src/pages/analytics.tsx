@@ -2,8 +2,8 @@ import { Box, CircularProgress, Alert } from "@mui/material";
 import { useRouter } from "next/router";
 import React, { useState, useEffect } from "react";
 
-import Layout from "@/components/Layout";
-import QuizAnalytics from "@/components/QuizAnalytics";
+import Layout from "@/components/layout/Layout";
+import QuizAnalytics from "@/components/charts/views/QuizAnalytics";
 
 export default function Analytics() {
   const router = useRouter();
@@ -113,7 +113,6 @@ export default function Analytics() {
     <Layout>
       <Box sx={{ width: "100%", p: { xs: 2, sm: 3 } }}>
         <QuizAnalytics
-          quizId={quizData.id}
           quizTitle={quizData.title}
           responses={responses}
           questions={quizData.questions || []}

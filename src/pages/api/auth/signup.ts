@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextApiRequest, NextApiResponse } from "next";
 
+import { validateSignUpData } from '@/lib/validation/api';
+
 // Supabase クライアント（サーバーサイド用）
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -15,27 +17,10 @@ export default async function handler(
     return res.status(405).json({ message: "Method not allowed" });
   }
 
-  const { username, password, email } = req.body;
-
-  if (!username || !password || !email) {
-    return res
-      .status(400)
-      .json({ message: "Username, email, and password are required" });
-  }
-
-  if (username.length < 3) {
-    return res
-      .status(400)
-      .json({ message: "Username must be at least 3 characters" });
-  }
-
-  if (password.length < 6) {
-    return res
-      .status(400)
-      .json({ message: "Password must be at least 6 characters" });
-  }
-
   try {
+    // 入力データを検証
+    const validatedData = validateSignUpData(req.body);
+    const { username, password, email } = validatedData;
     // ユーザー名の重複チェック
     const { data: existingUser, error: _checkError } = await supabase
       .from('profiles')
@@ -97,6 +82,12 @@ export default async function handler(
     
   } catch (error) {
     console.error("Error during signup:", error);
+    
+    // バリデーションエラーの場合は400を返す
+    if (error instanceof Error && error.message.includes('必要があります')) {
+      return res.status(400).json({ message: error.message });
+    }
+    
     res.status(500).json({ message: "Internal server error" });
   }
 }

@@ -56,15 +56,15 @@ import {
   Legend,
 } from 'recharts';
 
-import NotificationCenter from './NotificationCenter';
+import NotificationCenter from '../../shared/NotificationCenter';
 
-import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   getUserStats,
   getQuizzes,
   getQuizDetailedStats,
 } from '@/utils/supabase';
-import { getSafeDisplayName } from '@/utils/userDisplay';
+import { getSafeDisplayName } from '@/utils/user-display';
 
 interface DashboardStats {
   quizzesCreated: number;

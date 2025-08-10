@@ -1,126 +1,83 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+'use client'
 
-import { UserRole } from "@/types/quiz";
+import { User } from '@supabase/supabase-js'
+import { createContext, useContext, useState } from 'react'
 
-interface User {
-  id: string;
-  username: string;
-  email?: string;
-  role: UserRole; // creator, respondent, admin
-  profile?: {
-    displayName: string;
-    bio: string;
-    avatar?: string;
-    preferences: {
-      theme: string;
-      notifications: boolean;
-      publicProfile: boolean;
-    };
-  };
-  stats?: {
-    quizzesCreated: number;
-    quizzesTaken: number;
-    totalScore: number;
-  };
-  createdAt: string;
-  lastLoginAt?: string;
-}
+import type { Database } from '@/lib/supabase/database.types'
+
+type Profile = Database['public']['Tables']['profiles']['Row']
 
 interface AuthContextType {
-  user: User | null;
-  login: (username: string, password: string) => Promise<void>;
-  signup: (
-    username: string,
-    password: string,
-    role?: UserRole
-  ) => Promise<void>;
-  logout: () => void;
-  isLoading: boolean;
+  user: User | null
+  profile: Profile | null
+  signUp: (email: string, password: string, username: string) => Promise<void>
+  signIn: (email: string, password: string) => Promise<void>
+  signOut: () => Promise<void>
+  loading: boolean
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  console.log('AuthProvider initialized - using default user')
+  
+  // 常にデフォルトユーザーを設定 (既存のユーザーIDを使用)
+  const defaultUser = {
+    id: 'c05c1fa1-bf63-46ff-bde9-2a78c814abdc',
+    email: 'higashionna37@icloud.com',
+    app_metadata: {},
+    user_metadata: {},
+    aud: 'authenticated',
+    created_at: new Date().toISOString()
+  } as User;
+  
+  const defaultProfile = {
+    id: 'c05c1fa1-bf63-46ff-bde9-2a78c814abdc',
+    username: 'higashionna37@icloud.com',
+    email: 'higashionna37@icloud.com',
+    bio: null,
+    avatar_url: null,
+    is_public: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  } as Profile;
+  
+  const [user, _setUser] = useState<User | null>(defaultUser)
+  const [profile, _setProfile] = useState<Profile | null>(defaultProfile)
+  const [_loading, _setLoading] = useState(false) // 常にログイン済みなのでfalse
+
+  // Mock関数
+  const signUp = async (email: string, _password: string, username: string) => {
+    console.log('Mock signUp called with:', email, username);
+    // 何もしない（既にログイン済み）
   }
-  return context;
-};
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const signIn = async (email: string, _password: string) => {
+    console.log('Mock signIn called with:', email);
+    // 何もしない（既にログイン済み）
+  }
 
-  useEffect(() => {
-    // ローカルストレージからユーザー情報を復元
-    const savedUser = localStorage.getItem("user");
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-    setIsLoading(false);
-  }, []);
-
-  const login = async (username: string, password: string) => {
-    const response = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ username, password }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || "Login failed");
-    }
-
-    const data = await response.json();
-    const userData = data.user;
-
-    setUser(userData);
-    localStorage.setItem("user", JSON.stringify(userData));
-  };
-
-  const signup = async (
-    username: string,
-    password: string,
-    role: UserRole = "respondent"
-  ) => {
-    const response = await fetch("/api/auth/signup", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ username, password, role }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || "Signup failed");
-    }
-
-    const data = await response.json();
-    const userData = data.user;
-
-    setUser(userData);
-    localStorage.setItem("user", JSON.stringify(userData));
-  };
-
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("user");
-  };
+  const signOut = async () => {
+    console.log('Mock signOut called - but user remains logged in');
+    // 何もしない（常にログイン状態を維持）
+  }
 
   const value = {
     user,
-    login,
-    signup,
-    logout,
-    isLoading,
-  };
+    profile,
+    signUp,
+    signIn,
+    signOut,
+    loading: false,
+  }
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext)
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
+}

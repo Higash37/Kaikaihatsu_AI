@@ -1,6 +1,6 @@
 import React from 'react'
 
-import HeartMark from '@/components/BasicHeart'
+import HeartMark from '@/components/ui/BasicHeart'
 
 const HeartMarkBackground = () => {
   const heartMarks = [

@@ -4,8 +4,8 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/router";
 import React, { useState } from "react";
 
-import Header from "@/components/Header";
-import Pulldown from "@/components/Pulldown";
+import Header from "@/components/layout/Header";
+import Pulldown from "@/components/ui/Pulldown";
 
 // CircleBoxのProps定義
 interface CircleBoxProps {

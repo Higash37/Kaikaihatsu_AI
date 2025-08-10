@@ -10,8 +10,8 @@ import { useTheme } from "@mui/material/styles";
 import { useRouter } from "next/router";
 import React, { useState, useEffect, useCallback } from "react";
 
-import Header from "@/components/Header";
-import Layout from "@/components/Layout";
+import Header from "@/components/layout/Header";
+import Layout from "@/components/layout/Layout";
 // Supabaseインポートに変更
 import { saveQuizResponse } from "@/utils/supabase";
 

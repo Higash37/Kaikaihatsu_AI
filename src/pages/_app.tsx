@@ -5,8 +5,8 @@ import { ThemeProvider } from "@mui/material/styles";
 import type { AppProps } from "next/app"; // component と pageProps を型定義するため使用 型安全のために用意。
 // ↑ いわゆるフォーマットを用意しているようなもの。
 
-import { AuthProvider } from "../contexts/SupabaseAuthContext"; // 認証コンテキストをインポート
-import theme from "../theme"; // 作成したテーマをインポート
+import { AuthProvider } from "../contexts/AuthContext"; // 認証コンテキストをインポート
+import theme from "../theme/index"; // 作成したテーマをインポート
 
 //全ページに共通するレイアウト
 // 1. ① export default function App() {} とは → Next.js が すべてのページの上に適用する特別なコンポーネント

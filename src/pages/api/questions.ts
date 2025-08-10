@@ -6,7 +6,7 @@ import {
   rationalQuestions,
   passiveQuestions,
   activeQuestions,
-} from "../../data/QuestionList";
+} from "../../data/question-list";
 
 import { ApiResponse, Question } from "@/types";
 import { shuffle } from "@/utils";

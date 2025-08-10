@@ -10,7 +10,7 @@ import {
 import { motion } from "framer-motion";
 import React, { ChangeEvent } from "react";
 
-import QuizHeart from "./QuizHeart";
+import QuizHeart from "../quiz/HeartIcon";
 
 import { Question } from "@/types/quiz";
 

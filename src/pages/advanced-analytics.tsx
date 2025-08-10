@@ -42,15 +42,15 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import React, { useState, useEffect, useRef } from 'react';
 
-import AdvancedAnalytics from '@/components/AdvancedAnalytics';
-import AdvancedDashboard from '@/components/AdvancedDashboard';
-import DataExporter from '@/components/DataExporter';
-import ExportPresentation from '@/components/ExportPresentation';
-import NotificationCenter from '@/components/NotificationCenter';
-import ReportGenerator from '@/components/ReportGenerator';
-import { useAuth } from '@/contexts/SupabaseAuthContext';
+import AdvancedAnalytics from '@/components/charts/views/AdvancedAnalytics';
+import AdvancedDashboard from '@/components/charts/views/AdvancedDashboard';
+import DataExporter from '@/components/shared/DataExporter';
+import ExportPresentation from '@/components/shared/ExportPresentation';
+import NotificationCenter from '@/components/shared/NotificationCenter';
+import ReportGenerator from '@/components/shared/ReportGenerator';
+import { useAuth } from '@/contexts/AuthContext';
 import { getQuiz } from '@/utils/supabase';
-import { getSafeDisplayName } from '@/utils/userDisplay';
+import { getSafeDisplayName } from '@/utils/user-display';
 
 interface TabPanelProps {
   children?: React.ReactNode;

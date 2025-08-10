@@ -2,6 +2,8 @@
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
+import { sanitizeHtml, safeDownload } from '@/lib/security/sanitization';
+
 export interface SlideData {
   title: string;
   content: string | React.ReactNode;
@@ -52,14 +54,14 @@ export const generateSlideHTML = (slide: SlideData, index: number): string => {
       case 'title':
         return `
           <div class="slide-content title-slide">
-            <h1 class="slide-title">${slide.title}</h1>
-            <div class="slide-text">${slide.content}</div>
+            <h1 class="slide-title">${sanitizeHtml(slide.title.toString())}</h1>
+            <div class="slide-text">${sanitizeHtml((slide.content || '').toString())}</div>
           </div>
         `;
       case 'chart':
         return `
           <div class="slide-content chart-slide">
-            <h2 class="slide-title">${slide.title}</h2>
+            <h2 class="slide-title">${sanitizeHtml(slide.title.toString())}</h2>
             <div class="chart-container">
               ${slide.chartElement ? slide.chartElement.outerHTML : ''}
             </div>
@@ -68,10 +70,10 @@ export const generateSlideHTML = (slide: SlideData, index: number): string => {
       case 'split':
         return `
           <div class="slide-content split-slide">
-            <h2 class="slide-title">${slide.title}</h2>
+            <h2 class="slide-title">${sanitizeHtml(slide.title.toString())}</h2>
             <div class="split-container">
               <div class="split-left">
-                <div class="slide-text">${slide.content}</div>
+                <div class="slide-text">${sanitizeHtml((slide.content || '').toString())}</div>
               </div>
               <div class="split-right">
                 <div class="chart-container">
@@ -84,17 +86,17 @@ export const generateSlideHTML = (slide: SlideData, index: number): string => {
       case 'summary':
         return `
           <div class="slide-content summary-slide">
-            <h2 class="slide-title">${slide.title}</h2>
+            <h2 class="slide-title">${sanitizeHtml(slide.title.toString())}</h2>
             <div class="summary-content">
-              ${slide.content}
+              ${sanitizeHtml((slide.content || '').toString())}
             </div>
           </div>
         `;
       default:
         return `
           <div class="slide-content content-slide">
-            <h2 class="slide-title">${slide.title}</h2>
-            <div class="slide-text">${slide.content}</div>
+            <h2 class="slide-title">${sanitizeHtml(slide.title.toString())}</h2>
+            <div class="slide-text">${sanitizeHtml((slide.content || '').toString())}</div>
           </div>
         `;
     }
@@ -318,12 +320,14 @@ export const convertSlidesToPDF = async (
   for (let i = 0; i < presentationData.slides.length; i++) {
     const slide = presentationData.slides[i];
     
-    // 一時的なDIV要素を作成
+    // 一時的なDIV要素を安全に作成
     const tempDiv = document.createElement('div');
+    // サニタイズ済みのHTMLを設定（generateSlideHTML内でsanitizeHtmlを使用）
     tempDiv.innerHTML = generateSlideHTML(slide, i);
     tempDiv.style.position = 'absolute';
     tempDiv.style.left = '-9999px';
     tempDiv.style.top = '-9999px';
+    tempDiv.style.visibility = 'hidden'; // 追加のセキュリティ
     document.body.appendChild(tempDiv);
 
     try {
@@ -481,14 +485,7 @@ export const generateHTMLPresentation = (
   `;
 };
 
-// ファイルダウンロード
+// ファイルダウンロード - セキュアな実装
 export const downloadFile = (blob: Blob, filename: string) => {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  safeDownload(blob, filename);
 };
